@@ -4,28 +4,33 @@ import SwiftUI
 struct GameLinkApp: App {
   @State private var profileViewModel: GamingProfileViewModel?
   @State private var teammateDirectory: TeammateDirectoryViewModel?
+  @State private var sessionPlan: SessionPlanViewModel?
   @State private var storageSetupFailure: SquadNotebookStorageError?
 
   var body: some Scene {
     WindowGroup {
-      NavigationStack {
-        if let profileViewModel, let teammateDirectory {
-          GamingProfileView(viewModel: profileViewModel, teammateDirectory: teammateDirectory)
+      Group {
+        if let profileViewModel, let teammateDirectory, let sessionPlan {
+          GameLinkWorkspaceView(
+            profile: profileViewModel, teammateDirectory: teammateDirectory,
+            sessionPlan: sessionPlan)
         } else if let storageSetupFailure {
-          GamingProfileUnavailableView(
-            message: storageSetupFailure.localizedDescription, retry: openProfile)
+          NavigationStack {
+            GamingProfileUnavailableView(
+              message: storageSetupFailure.localizedDescription, retry: openNotebook)
+          }
         } else {
-          ProgressView("Opening your profile…")
+          ProgressView("Opening GameLink…")
         }
       }
       .environment(\.locale, Locale(identifier: "en_AU"))
       .task {
-        if profileViewModel == nil && storageSetupFailure == nil { openProfile() }
+        if profileViewModel == nil && storageSetupFailure == nil { openNotebook() }
       }
     }
   }
 
-  private func openProfile() {
+  private func openNotebook() {
     do {
       let repository = try LocalSquadNotebookRepository.applicationSupport()
       profileViewModel = GamingProfileViewModel(
@@ -35,6 +40,9 @@ struct GameLinkApp: App {
         loadDirectory: LoadTeammateDirectoryUseCase(repository: repository),
         saveContact: SaveTeammateContactUseCase(repository: repository),
         setAvoidance: SetTeammateAvoidanceUseCase(repository: repository))
+      sessionPlan = SessionPlanViewModel(
+        loadProfile: LoadGamingProfileUseCase(repository: repository),
+        findTeammates: FindCompatibleTeammatesUseCase(repository: repository))
       storageSetupFailure = nil
     } catch {
       storageSetupFailure = error
