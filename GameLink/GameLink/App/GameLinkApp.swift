@@ -3,13 +3,14 @@ import SwiftUI
 @main
 struct GameLinkApp: App {
   @State private var profileViewModel: GamingProfileViewModel?
+  @State private var teammateDirectory: TeammateDirectoryViewModel?
   @State private var storageSetupFailure: SquadNotebookStorageError?
 
   var body: some Scene {
     WindowGroup {
       NavigationStack {
-        if let profileViewModel {
-          GamingProfileView(viewModel: profileViewModel)
+        if let profileViewModel, let teammateDirectory {
+          GamingProfileView(viewModel: profileViewModel, teammateDirectory: teammateDirectory)
         } else if let storageSetupFailure {
           GamingProfileUnavailableView(
             message: storageSetupFailure.localizedDescription, retry: openProfile)
@@ -30,6 +31,10 @@ struct GameLinkApp: App {
       profileViewModel = GamingProfileViewModel(
         loadProfile: LoadGamingProfileUseCase(repository: repository),
         saveProfile: SaveGamingProfileUseCase(repository: repository))
+      teammateDirectory = TeammateDirectoryViewModel(
+        loadDirectory: LoadTeammateDirectoryUseCase(repository: repository),
+        saveContact: SaveTeammateContactUseCase(repository: repository),
+        setAvoidance: SetTeammateAvoidanceUseCase(repository: repository))
       storageSetupFailure = nil
     } catch {
       storageSetupFailure = error

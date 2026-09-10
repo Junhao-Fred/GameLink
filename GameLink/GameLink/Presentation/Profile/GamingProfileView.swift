@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GamingProfileView: View {
   @Bindable var viewModel: GamingProfileViewModel
+  @Bindable var teammateDirectory: TeammateDirectoryViewModel
   @FocusState private var isPlayerNameFocused: Bool
 
   var body: some View {
@@ -14,10 +15,11 @@ struct GamingProfileView: View {
           message: failure.localizedDescription, retry: viewModel.loadIfNeeded)
       case .ready:
         Form {
-          GamingProfileDetailsSection(
-            form: $viewModel.form, failure: viewModel.saveFailure,
+          GamingProfileFields(
+            form: $viewModel.form,
+            failureField: viewModel.saveFailure?.field,
+            failureMessage: viewModel.saveFailure?.localizedDescription,
             playerNameFocus: $isPlayerNameFocused)
-          GamingAvailabilitySection(form: $viewModel.form, failure: viewModel.saveFailure)
           Section {
             Button {
               isPlayerNameFocused = false
@@ -43,12 +45,26 @@ struct GamingProfileView: View {
           } footer: {
             Text("Your profile stays on this device. It is not published or sent to other players.")
           }
+          TeammateDirectorySection(
+            viewModel: teammateDirectory, canManageTeammates: viewModel.canManageTeammates)
         }
         .scrollDismissesKeyboard(.interactively)
+        .sheet(item: $teammateDirectory.editor, onDismiss: teammateDirectory.reload) { editor in
+          TeammateContactEditorView(viewModel: editor)
+        }
+        .alert("Preference not saved", isPresented: $teammateDirectory.showsAvoidanceFailure) {
+          Button("Close", role: .cancel) {}
+        } message: {
+          if let failure = teammateDirectory.avoidanceFailure { Text(failure.localizedDescription) }
+        }
+        .onChange(of: teammateDirectory.preferenceConfirmation) { _, confirmation in
+          if let confirmation { AccessibilityNotification.Announcement(confirmation).post() }
+        }
       }
     }
     .navigationTitle("Profile")
     .task { viewModel.loadIfNeeded() }
+    .onChange(of: viewModel.savedProfile, initial: true) { teammateDirectory.reload() }
     .alert("Profile not saved", isPresented: $viewModel.showsSaveFailure) {
       Button("Review profile", role: .cancel) {
         isPlayerNameFocused = viewModel.saveFailure?.field == .playerName
@@ -60,100 +76,6 @@ struct GamingProfileView: View {
       if isSaved {
         AccessibilityNotification.Announcement("Profile saved on this device.").post()
       }
-    }
-  }
-}
-
-private struct GamingProfileDetailsSection: View {
-  @Binding var form: GamingProfileForm
-  let failure: GamingProfileSaveFailure?
-  let playerNameFocus: FocusState<Bool>.Binding
-
-  var body: some View {
-    Section {
-      VStack(alignment: .leading, spacing: 8) {
-        Text("Player name")
-        TextField("Your in-game name", text: $form.gamerTag)
-          .textInputAutocapitalization(.never)
-          .autocorrectionDisabled()
-          .submitLabel(.done)
-          .focused(playerNameFocus)
-          .onSubmit { playerNameFocus.wrappedValue = false }
-          .accessibilityLabel("Player name")
-          .accessibilityIdentifier("playerName")
-        GamingProfileFieldError(message: failure?.message(for: .playerName))
-      }
-      VStack(alignment: .leading) {
-        Picker("Server", selection: $form.server) {
-          Text("Choose server").tag(Optional<GameServer>.none)
-          ForEach(GameServer.allCases, id: \.self) { server in
-            Text(server.rawValue).tag(Optional(server))
-          }
-        }
-        GamingProfileFieldError(message: failure?.message(for: .server))
-      }
-      VStack(alignment: .leading) {
-        Picker("Position", selection: $form.preferredRole) {
-          Text("Choose position").tag(Optional<PreferredRole>.none)
-          ForEach(PreferredRole.allCases, id: \.self) { role in
-            Text(role.rawValue).tag(Optional(role))
-          }
-        }
-        GamingProfileFieldError(message: failure?.message(for: .role))
-      }
-      Toggle("I use voice chat", isOn: $form.usesVoiceChat)
-    } header: {
-      Text("League of Legends")
-    } footer: {
-      Text("Use the name, server and position your teammates know you by.")
-    }
-  }
-}
-
-private struct GamingAvailabilitySection: View {
-  @Binding var form: GamingProfileForm
-  let failure: GamingProfileSaveFailure?
-
-  var body: some View {
-    Section {
-      VStack(alignment: .leading) {
-        Picker("Day", selection: $form.playDay) {
-          Text("Choose day").tag(Optional<PlayDay>.none)
-          ForEach(PlayDay.allCases, id: \.self) { day in
-            Text(day.rawValue).tag(Optional(day))
-          }
-        }
-        GamingProfileFieldError(message: failure?.message(for: .playDay))
-      }
-      DatePicker("Start time", selection: $form.startTime, displayedComponents: .hourAndMinute)
-        .environment(\.calendar, GamingProfileForm.clockCalendar)
-        .environment(\.timeZone, .gmt)
-        .environment(\.locale, Locale(identifier: "en_GB"))
-      Stepper(value: $form.durationMinutes, in: 30...180, step: 15) {
-        Text("Duration: \(form.durationMinutes) minutes")
-      }
-      GamingProfileFieldError(message: failure?.message(for: .availability))
-    } header: {
-      Text("Weekly availability")
-    } footer: {
-      VStack(alignment: .leading, spacing: 8) {
-        Text(
-          "Sydney time (Australia/Sydney), regardless of your device time zone. Choose 30–180 minutes within one day."
-        )
-        if let summary = form.availabilitySummary { Text(summary) }
-      }
-    }
-  }
-}
-
-private struct GamingProfileFieldError: View {
-  let message: String?
-
-  var body: some View {
-    if let message {
-      Text(message)
-        .font(.callout)
-        .fixedSize(horizontal: false, vertical: true)
     }
   }
 }
@@ -190,7 +112,11 @@ struct GamingProfileUnavailableView: View {
       GamingProfileView(
         viewModel: GamingProfileViewModel(
           loadProfile: LoadGamingProfileUseCase(repository: repository),
-          saveProfile: SaveGamingProfileUseCase(repository: repository)))
+          saveProfile: SaveGamingProfileUseCase(repository: repository)),
+        teammateDirectory: TeammateDirectoryViewModel(
+          loadDirectory: LoadTeammateDirectoryUseCase(repository: repository),
+          saveContact: SaveTeammateContactUseCase(repository: repository),
+          setAvoidance: SetTeammateAvoidanceUseCase(repository: repository)))
     }
   }
 #endif

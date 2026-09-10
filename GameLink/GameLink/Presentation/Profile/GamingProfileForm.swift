@@ -59,6 +59,19 @@ nonisolated struct GamingProfileForm: Equatable {
 
 nonisolated enum GamingProfileField {
   case playerName, server, role, playDay, availability
+
+  func hasChanged(from previous: GamingProfileForm, to current: GamingProfileForm) -> Bool {
+    switch self {
+    case .playerName:
+      previous.gamerTag != current.gamerTag || previous.server != current.server
+    case .server: previous.server != current.server
+    case .role: previous.preferredRole != current.preferredRole
+    case .playDay: previous.playDay != current.playDay
+    case .availability:
+      previous.startMinute != current.startMinute
+        || previous.durationMinutes != current.durationMinutes
+    }
+  }
 }
 
 nonisolated enum GamingProfileFormError: LocalizedError, Equatable {
@@ -78,9 +91,9 @@ nonisolated enum GamingProfileFormError: LocalizedError, Equatable {
 
   var errorDescription: String? {
     switch self {
-    case .chooseServer: "Choose the server you play on before saving your profile."
-    case .chooseRole: "Choose your preferred position before saving your profile."
-    case .choosePlayDay: "Choose the weekday you are usually available to play."
+    case .chooseServer: "Choose the player's server before saving."
+    case .chooseRole: "Choose the player's preferred position before saving."
+    case .choosePlayDay: "Choose the weekday this player is usually available."
     case .invalidPlayWindow(let reason): reason.errorDescription
     }
   }

@@ -30,6 +30,10 @@ final class GamingProfileViewModel {
     loadState == .ready && (savedProfile == nil || hasUnsavedChanges)
   }
 
+  var canManageTeammates: Bool {
+    loadState == .ready && savedProfile != nil && !hasUnsavedChanges
+  }
+
   func loadIfNeeded() {
     guard loadState != .ready else { return }
     do {
@@ -65,19 +69,7 @@ final class GamingProfileViewModel {
   }
 
   private func clearFailureAfterEditing(_ previousForm: GamingProfileForm) {
-    let affectedFieldChanged: Bool =
-      switch saveFailure?.field {
-      case .playerName:
-        form.gamerTag != previousForm.gamerTag || form.server != previousForm.server
-      case .server: form.server != previousForm.server
-      case .role: form.preferredRole != previousForm.preferredRole
-      case .playDay: form.playDay != previousForm.playDay
-      case .availability:
-        form.startMinute != previousForm.startMinute
-          || form.durationMinutes != previousForm.durationMinutes
-      case nil: false
-      }
-    if affectedFieldChanged {
+    if saveFailure?.field?.hasChanged(from: previousForm, to: form) == true {
       saveFailure = nil
       showsSaveFailure = false
     }
