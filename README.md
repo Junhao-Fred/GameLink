@@ -4,7 +4,7 @@ A native SwiftUI iOS project for League of Legends players with limited game tim
 
 ## Current status
 
-The app opens a functional Profile screen connected to the local JSON repository. Players can save their own profile, maintain a teammate directory, and privately exclude or restore teammates for future searches. Teammate editing uses a sheet. Session Plan, Teammate Results, and Teammate Details remain to be built; the four-screen assessment requirement is not yet complete.
+The app has two destinations, Find and Profile, connected to the local JSON repository. Players can maintain their profile and teammate directory, privately exclude or restore teammates, set session conditions, inspect compatible teammates, review a proposal, and open the system share interface. The four primary SwiftUI screens are Profile, Session Plan, Teammate Results, and Teammate Details. Proposal preview is an additional sheet. Remaining assessment work includes broader validation, the human-system diagram, the reflective report, and submission packaging.
 
 This is a fresh project, without the previous implementation or third-party dependencies. All project-authored interface text, documentation, and test names must remain in English. Swift source comments, including DocC comments, are omitted at the owner's request; domain intent is described here instead.
 
@@ -12,11 +12,11 @@ This is a fresh project, without the previous implementation or third-party depe
 
 The primary stakeholder is a time-limited player arranging a session within an existing gaming circle. Repeatedly checking each teammate's server, preferred role, availability, and voice-chat preference creates coordination work and can waste a limited play window.
 
-The planned MVP will help the player identify compatible teammates and prepare a clear session proposal. This problem framing is a product hypothesis to validate with stakeholders, not a claim of completed interviews or proven results.
+The MVP helps the player identify compatible teammates and prepare a clear session proposal. This problem framing is a product hypothesis to validate with stakeholders, not a claim of completed interviews or proven results.
 
 ## MVP scope
 
-The business rules for the following capabilities are implemented and covered by unit and local-file integration tests. Profile and teammate management have functional interfaces; matching and proposal sharing still need screens:
+The following capabilities have business rules, unit and local-file integration tests, and connected interfaces:
 
 - Save the player's own gaming profile and availability.
 - Record and update teammate details provided with their consent.
@@ -30,18 +30,18 @@ Creating or sharing a proposal is not evidence of delivery, acceptance, or a con
 
 Out of scope: account registration, cloud sync, Firebase, live stranger matching, in-app chat, payments, leaderboards, game-history scraping, and game-client automation. Do not collect game passwords or access tokens.
 
-## Planned screens and workflow
+## Screens and workflow
 
-The completed MVP will have two top-level destinations, `Find` and `Profile`, and four functional screens:
+The app has two top-level destinations, `Find` and `Profile`, and four functional screens:
 
 | Screen | Purpose | Primary action |
 | --- | --- | --- |
 | Profile | Maintain the player's profile, teammate contacts, and private avoid list. | Save Profile |
 | Session Plan | Specify the play window, needed role, and voice preference. | Find Teammates |
 | Teammate Results | Show eligible teammates, shared time, and matching reasons. | Open a teammate's details |
-| Teammate Details | Review the player and actual shared time before proposing a session. | Prepare Proposal |
+| Teammate Details | Review the player and actual shared time before proposing a session. | Review Proposal |
 
-Teammate editing and proposal preview will use focused sheets rather than additional tabs. Controls will only be added when their actions work.
+Teammate editing and proposal preview use focused sheets rather than additional tabs. Controls are only added when their actions work.
 
 Workflow: save profile -> record teammates -> set session conditions -> review matches -> check teammate details -> preview and share a proposal -> confirm externally.
 
@@ -78,6 +78,10 @@ Current source folders:
 - `GameLink/GameLink/App`: application entry point.
 - `GameLink/GameLink/Presentation/Profile`: the personal profile screen, shared player fields, form validation, and profile ViewModel.
 - `GameLink/GameLink/Presentation/Teammates`: the directory section, teammate editor sheet, and their ViewModels.
+- `GameLink/GameLink/Presentation/Planning`: the session draft, field feedback, planning screen, and planning ViewModel.
+- `GameLink/GameLink/Presentation/Matching`: ranked results, teammate details, and their validation and navigation state.
+- `GameLink/GameLink/Presentation/Proposals`: the message preview, share-request state, and the system sharing adapter.
+- `GameLink/GameLink/Presentation/Shared`: shared weekly-time controls and a fixed clock reference for time-picker input.
 - `GameLink/GameLink/Domain`: immutable validated profiles and play windows, squad models, and the notebook repository contract.
 - `GameLink/GameLink/Application`: the seven business Use Cases.
 - `GameLink/GameLink/Data`: local notebook storage, versioned saved representations, and storage recovery errors.
@@ -97,7 +101,7 @@ These are explicit MVP product rules to validate with stakeholders, not official
 - A teammate must match the server and requested role, meet the voice requirement, and share at least 30 minutes. The organiser and privately avoided players are excluded.
 - Results rank by longer shared time, then by stable name/identifier order. No matches is a valid empty result, distinct from unreadable saved data.
 - Preparing a proposal rechecks the saved organiser, teammate, and avoid list. Changed profiles require a new search. Shared time is recalculated rather than trusted from a cached result.
-- Proposals are drafts only: no message is transmitted, no session is accepted, and users must confirm the exact date externally. Thirty minutes of overlap does not guarantee a complete game.
+- Preparing a proposal creates a draft only: no message is automatically transmitted and no session is accepted. The player explicitly opens sharing and must confirm the exact date externally. Thirty minutes of overlap does not guarantee a complete game.
 - Avoidance is private and reversible. Repeating the current preference performs no write; failed saves leave the previous notebook unchanged according to the repository contract.
 
 ## Local storage and recovery
@@ -165,20 +169,43 @@ The app entry point creates profile and directory ViewModels using the same loca
 - Permission starts unchecked for every editing session. Confirm that the teammate agreed to storage of these details before saving. This is a user confirmation, not a verified permission record or an automatic notification.
 - A successful save closes the sheet and reloads the directory. An unsuccessful save leaves the draft open and keeps existing stored details unchanged. Field errors remain visible after dismissing the alert and clear when the affected input changes.
 - Cancel asks before discarding modified fields. Interactive sheet dismissal is disabled while a draft has unsaved changes. Merely opening or editing the form performs no write.
-- Use a teammate's search-preference menu to exclude or restore them. Avoided teammates remain visible and editable; their saved details are not deleted. Search eligibility is still determined by the matching Use Case when search screens are connected.
+- Use a teammate's search-preference menu to exclude or restore them. Avoided teammates remain visible and editable; their saved details are not deleted. The matching Use Case rechecks search eligibility when returning to Find or refreshing results.
 - Unreadable storage is shown as unavailable, with a retry action; it is never presented as an empty directory. There are no seeded contacts in the production app.
+
+## Session planning and matching
+
+`GameLinkWorkspaceView` owns the selected destination and connects independent navigation stacks. `SessionPlanViewModel` opens saved availability through `LoadGamingProfileUseCase` and searches through `FindCompatibleTeammatesUseCase`. `TeammateResultsViewModel` re-runs that same operation when results need checking; neither ViewModel reads JSON directly or duplicates matching rules.
+
+- The first plan uses the organiser's saved weekday and time window. The organiser must explicitly choose the needed position; voice chat is optional unless selected.
+- The server comes from the saved profile, not a separate search setting that could contradict the organiser's account. The plan displays the saved availability before its editable conditions.
+- `WeeklyPlayWindowFields` is shared by profile, teammate editing, and session planning. Its time selector uses a fixed clock reference to preserve hour/minute input regardless of the device time zone. Domain windows remain recurring Sydney wall-clock minutes, not dated calendar appointments.
+- A missing position, invalid play window, session outside saved availability, or unsupported voice requirement blocks navigation to results. The alert explains how to recover, and the relevant field keeps the message after the alert closes. Failed searches keep the session draft.
+- Back navigation and switching destinations preserve the draft during the current app session. Editing conditions invalidates the previous results. Plans and results are not persisted; relaunching starts a new draft from saved availability.
+- Returning to Find or bringing the app back to the foreground while Find is selected reloads saved context. Results can also be refreshed explicitly. Unsaved Profile changes block searches and hide previous matches until the organiser reviews the edits.
+- Results show the requested conditions, server, matching position, actual shared interval and duration, and voice compatibility. The domain operation supplies both filtering and ranking. No matching players is a valid empty state with actions to review the plan or manage teammates; unreadable data is a separate failure state that never displays cached matches.
+- A result opens Teammate Details for that player's stable identifier. The selected detail ViewModel is owned by the planning workflow and released when returning to results. Opening a row does not transmit a message.
+
+## Teammate details and proposal sharing
+
+`TeammateDetailsViewModel` checks the selected search snapshot through `PrepareSquadProposalUseCase`. Its screen shows the saved teammate profile, actual shared interval, and session requirements. The Use Case rechecks the saved organiser, selected teammate, avoidance preference, and compatibility when details are opened, when a proposal is reviewed, and immediately before a share request is created. Views never access the repository directly.
+
+- Review proposal opens an item-driven sheet containing the exact unconfirmed message. No proposal, booking, or share history is written to storage.
+- Share proposal rechecks the notebook before opening system sharing. Changed or removed profiles, an avoided teammate, and unreadable storage invalidate the preview and return the player to an actionable error on Details. Unsaved Profile changes also block review. Check again retries the validation; Return to results re-runs the search; Review profile opens the saved details.
+- The player chooses the destination app and recipient. The preview identifies the intended teammate and explains the information leaving GameLink. Only the existing domain-generated message is handed over; internal identifiers and the private avoid list are not included.
+- `SquadProposalActivityView` is a small UIKit adapter inside the SwiftUI presentation layer. A button-controlled request allows validation before presentation; Apple's [UIActivityViewController completion callback](https://developer.apple.com/documentation/uikit/uiactivityviewcontroller/completionwithitemshandler-swift.property) supplies activity completion, cancellation, or failure when reported. No third-party dependency is used.
+- A completed activity is not proof of message delivery or teammate acceptance. A cancelled or failed activity leaves the preview available to retry. Dismissing the system sheet without a completion callback also leaves the preview available, without inventing a success result. Request identifiers prevent a late callback from overwriting a newer attempt.
+- Switching back from Profile or returning to the foreground rechecks open Details. Invalidated previews are dismissed, but GameLink cannot recall content already handed to another app. Exact dates, delivery, agreement, and later changes must be confirmed in the players' existing conversation.
 
 ## Remaining assessment work
 
-- Complete Session Plan, Teammate Results, and Teammate Details, including proposal preview and system sharing.
-- Present the existing domain errors with useful recovery actions in the remaining screens.
+- Complete broader accessibility, device, and external sharing validation with stakeholder feedback.
 - Validate complete UI workflows, app termination/relaunch, and physical-device file protection; the minimum Use Case and unit-test counts are already represented in code.
 - Produce a one-page human-system architecture diagram in PDF or PNG, showing layers, responsibility boundaries, and the main data flow.
 - Write a 600-800-word English reflective report, grounded in actual design and validation evidence, and export it as PDF.
 - Validate the working app in Xcode and package the project for submission.
 - Obtain owner approval of each new commit message before committing; obtain authorization before pushing further changes.
 
-Next development stage: implement Session Plan and Teammate Results using the saved profile and teammate directory, then connect Teammate Details and proposal sharing.
+Next development stage: prepare the one-page human-system architecture diagram and the 600-800-word reflective report, then perform final submission checks.
 
 ## Foundation validation
 
@@ -208,9 +235,33 @@ The avoidance menu was exercised in both directions. After terminating and relau
 
 The final full simulator test run passed with 201 passing test instances, one device-only test skipped, and no failures. Small-phone, iPad, physical-device, spoken VoiceOver, and interrupted-write behavior remain unverified. Simulator touch-flow checks do not establish physical-device file-protection behavior.
 
+## Session planning and results validation
+
+On September 10, 2026, the full Xcode 26.6 / iOS 26.5 simulator test run passed 155 test methods, expanded into 231 executed test instances, with no failures. One existing physical-device file-protection test was skipped. The three new suites add 23 methods covering explicit session conditions, clock and duration boundaries, draft preservation, targeted validation, profile-review gating, result invalidation, avoidance refresh, recovery after read failures, and reopened local storage.
+
+Using fictional profiles on a separate iPhone 17 Pro test simulator, UI checks covered missing-position feedback, a successful search showing the saved teammate and 60 shared minutes, back navigation preserving conditions, an out-of-availability plan, and an unsupported voice requirement. Changing the affected field cleared its inline error. Switching from an unsaved Profile edit back to Find hid previous matches; resolving the edit restored access. Avoiding the teammate in Profile changed the open results to the empty state, and restoring inclusion made the teammate appear again. Both empty-state recovery actions were exercised.
+
+Default-size light appearance was inspected on the planning and result screens. On the iPhone 17 Pro simulator, dark appearance at the largest Dynamic Type size was checked through the complete planning form, a successful search, the full teammate card, and the final result explanation. Controls remained reachable by scrolling, and the final explanations could be brought fully above the tab bar. The system's expanded result-page title shortened at this text size; its compact navigation title remained readable after scrolling. The simulator was returned to light appearance and the default text size afterward.
+
+On a separate iPhone SE (3rd generation) simulator with a 375-point-wide portrait viewport, the first-launch profile reminder and its Open Profile action were checked before adding a fictional saved-notebook fixture. With that fixture, checks covered position selection, the session time controls, a successful search showing 60 shared minutes, and complete scrolling through both pages. Landscape checks covered the result card and explanation, returning to the preserved plan, and searching again. Search buttons and final explanations could be scrolled clear of the tab bar in both orientations. The compact simulator was returned to portrait afterward; it contains fictional QA details only.
+
+These are visual and touch-flow checks, not a complete accessibility audit. Tablet, reduced-motion, spoken VoiceOver, measured color contrast, and physical-device checks are not yet established for these screens. Test results do not substitute for those checks. Source formatting, whitespace, and English-only content checks passed; no dependency or storage-format change was introduced.
+
+## Teammate details and proposal sharing validation
+
+On September 10, 2026, the full Xcode 26.6 / iOS 26.5 simulator run passed 173 test methods, expanded into 256 executed test instances, with no failures. One existing physical-device file-protection test was skipped. The three new suites add 18 methods and 25 instances covering selection, shared-time accuracy, explicit preview and sharing, unsaved-profile gating, changed or removed profiles, avoidance, read failures, retry, sheet dismissal, and stale completion callbacks. A separate reader/writer integration scenario confirms that changed on-disk avoidance blocks an old preview without writing a proposal.
+
+On a dedicated iPhone 17 Pro simulator using fictional players, checks covered opening a result, reviewing saved teammate details and the actual shared time, opening the exact proposal preview, presenting system sharing, and dismissing it without choosing a destination. The original preview remained available and its share button became enabled again; no successful delivery or acceptance was claimed. An initially narrow Review proposal button was corrected by moving its width constraint into the button label. The rebuilt app showed the full-width control.
+
+Dark appearance at the largest Dynamic Type size was inspected through all of Teammate Details, including its primary action and final explanation. The beginning and middle of the proposal preview wrapped visibly, but its final text and share control at that size remain unverified: automated scrolling lost its accessible scroll container within the long message row, and coordinate gestures failed in the automation tool. This is a validation limitation, not evidence that the complete page is accessible. The simulator was restored to light appearance and the default text size afterward.
+
+On a separate iPhone SE (3rd generation) simulator at the default text size, checks covered result selection, complete scrolling through Details and proposal preview, and opening and dismissing system sharing without selecting an action. Both primary buttons and their final explanations could be scrolled fully into view. Landscape checks confirmed that the preview text wraps and both pages' primary actions and final explanations remain reachable. The compact simulator was returned to normal portrait afterward. App-authored text was English; system share labels follow the device's own language.
+
+Completion, cancellation, and failure callbacks were exercised with controlled test outcomes, not real message delivery. No message was sent, copied, or saved during interface checks. Physical-device protection, iPad presentation, spoken VoiceOver, reduced-motion behavior, measured contrast, and real external-channel outcomes remain unverified. Swift formatting, whitespace, English-only project content, and absence of source comments, embedded development paths, and generation markers were checked. No storage-format change or new dependency was introduced.
+
 ## Git
 
-Development continues locally on `profile-development`. The remote `main` branch does not yet include the profile screens or teammate-management changes. Documentation and storage tests accompany the local implementation.
+Development continues on `profile-development`. The branch contains profile and teammate management, shared time controls, session planning, results, Teammate Details, proposal sharing, their tests, and the validation records above. Approved changes are published to the matching GitHub branch. The remote `main` branch has not been changed by these development stages.
 
 Keep further work local until approved. Confirm each new commit message with the owner before committing; do not push without authorization. Do not restore the previous project's Git history or manufacture retrospective commits.
 
