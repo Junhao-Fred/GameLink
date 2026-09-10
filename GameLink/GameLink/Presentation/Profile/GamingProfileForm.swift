@@ -9,11 +9,7 @@ nonisolated struct GamingProfileForm: Equatable {
   var durationMinutes: Int
   var usesVoiceChat: Bool
 
-  static let clockCalendar: Calendar = {
-    var calendar = Calendar(identifier: .gregorian)
-    calendar.timeZone = .gmt
-    return calendar
-  }()
+  static let clockCalendar = PlayWindowClock.calendar
 
   init(profile: GamingProfile? = nil) {
     gamerTag = profile?.gamerTag ?? ""
@@ -26,12 +22,8 @@ nonisolated struct GamingProfileForm: Equatable {
   }
 
   var startTime: Date {
-    get { Date(timeIntervalSinceReferenceDate: TimeInterval(startMinute) * 60) }
-    set {
-      startMinute =
-        Self.clockCalendar.component(.hour, from: newValue) * 60
-        + Self.clockCalendar.component(.minute, from: newValue)
-    }
+    get { PlayWindowClock.date(forMinute: startMinute) }
+    set { startMinute = PlayWindowClock.minute(of: newValue) }
   }
 
   var availabilitySummary: String? {

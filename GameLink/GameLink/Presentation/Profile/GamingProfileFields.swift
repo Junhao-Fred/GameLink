@@ -10,8 +10,11 @@ struct GamingProfileFields: View {
     GamingProfileDetailsSection(
       form: $form, failureField: failureField, failureMessage: failureMessage,
       playerNameFocus: playerNameFocus)
-    GamingAvailabilitySection(
-      form: $form, failureField: failureField, failureMessage: failureMessage)
+    WeeklyPlayWindowFields(
+      day: $form.playDay, startTime: $form.startTime, durationMinutes: $form.durationMinutes,
+      title: "Weekly availability", summary: form.availabilitySummary,
+      dayFailure: failureField == .playDay ? failureMessage : nil,
+      windowFailure: failureField == .availability ? failureMessage : nil)
   }
 }
 
@@ -58,43 +61,6 @@ private struct GamingProfileDetailsSection: View {
       Text("League of Legends")
     } footer: {
       Text("Use the name, server and position this player shares with teammates.")
-    }
-  }
-}
-
-private struct GamingAvailabilitySection: View {
-  @Binding var form: GamingProfileForm
-  let failureField: GamingProfileField?
-  let failureMessage: String?
-
-  var body: some View {
-    Section {
-      VStack(alignment: .leading) {
-        Picker("Day", selection: $form.playDay) {
-          Text("Choose day").tag(Optional<PlayDay>.none)
-          ForEach(PlayDay.allCases, id: \.self) { day in
-            Text(day.rawValue).tag(Optional(day))
-          }
-        }
-        GamingProfileFieldError(message: failureField == .playDay ? failureMessage : nil)
-      }
-      DatePicker("Start time", selection: $form.startTime, displayedComponents: .hourAndMinute)
-        .environment(\.calendar, GamingProfileForm.clockCalendar)
-        .environment(\.timeZone, .gmt)
-        .environment(\.locale, Locale(identifier: "en_GB"))
-      Stepper(value: $form.durationMinutes, in: 30...180, step: 15) {
-        Text("Duration: \(form.durationMinutes) minutes")
-      }
-      GamingProfileFieldError(message: failureField == .availability ? failureMessage : nil)
-    } header: {
-      Text("Weekly availability")
-    } footer: {
-      VStack(alignment: .leading, spacing: 8) {
-        Text(
-          "Sydney time (Australia/Sydney), regardless of your device time zone. Choose 30–180 minutes within one day."
-        )
-        if let summary = form.availabilitySummary { Text(summary) }
-      }
     }
   }
 }
