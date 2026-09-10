@@ -18,7 +18,15 @@ struct GameLinkWorkspaceView: View {
             switch destination {
             case .results:
               if let results = sessionPlan.results {
-                TeammateResultsView(viewModel: results, openProfile: openProfile)
+                TeammateResultsView(
+                  viewModel: results, openProfile: openProfile,
+                  openTeammate: sessionPlan.openTeammate)
+              }
+            case .teammateDetails:
+              if let teammate = sessionPlan.selectedTeammate {
+                TeammateDetailsView(
+                  viewModel: teammate, openProfile: openProfile,
+                  returnToResults: sessionPlan.returnToResults)
               }
             }
           }

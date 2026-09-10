@@ -3,6 +3,7 @@ import SwiftUI
 struct TeammateResultsView: View {
   let viewModel: TeammateResultsViewModel
   let openProfile: () -> Void
+  let openTeammate: (PlayerIdentifier) -> Void
   @Environment(\.dismiss) private var dismiss
 
   var body: some View {
@@ -32,7 +33,19 @@ struct TeammateResultsView: View {
         } else {
           Section {
             ForEach(search.matches) { match in
-              TeammateMatchRow(match: match, requiresVoiceChat: search.plan.requiresVoiceChat)
+              Button {
+                openTeammate(match.id)
+              } label: {
+                HStack {
+                  TeammateMatchRow(match: match, requiresVoiceChat: search.plan.requiresVoiceChat)
+                  Spacer(minLength: 8)
+                  Image(systemName: "chevron.right")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                }
+              }
+              .buttonStyle(.plain)
+              .accessibilityHint("Review this teammate and the shared session time")
             }
           } header: {
             Text("Compatible teammates (\(search.matches.count))")

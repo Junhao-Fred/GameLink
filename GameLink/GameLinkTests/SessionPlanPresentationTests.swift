@@ -169,6 +169,7 @@ struct SessionPlanPresentationTests {
   private func makePlanner(_ repository: TestSquadNotebookRepository) -> SessionPlanViewModel {
     SessionPlanViewModel(
       loadProfile: LoadGamingProfileUseCase(repository: repository),
-      findTeammates: FindCompatibleTeammatesUseCase(repository: repository))
+      findTeammates: FindCompatibleTeammatesUseCase(repository: repository),
+      prepareProposal: PrepareSquadProposalUseCase(repository: repository))
   }
 }

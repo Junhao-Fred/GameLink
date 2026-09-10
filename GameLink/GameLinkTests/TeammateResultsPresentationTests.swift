@@ -43,7 +43,8 @@ struct TeammateResultsPresentationTests {
     let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let planner = SessionPlanViewModel(
       loadProfile: LoadGamingProfileUseCase(repository: repository),
-      findTeammates: FindCompatibleTeammatesUseCase(repository: repository))
+      findTeammates: FindCompatibleTeammatesUseCase(repository: repository),
+      prepareProposal: PrepareSquadProposalUseCase(repository: repository))
     planner.refreshProfile(hasUnsavedProfileChanges: false)
     planner.form.neededRole = .support
     planner.search()
@@ -103,7 +104,8 @@ struct TeammateResultsPresentationTests {
     let reader = try LocalSquadNotebookRepository(fileURL: sandbox.fileURL)
     let planner = SessionPlanViewModel(
       loadProfile: LoadGamingProfileUseCase(repository: reader),
-      findTeammates: FindCompatibleTeammatesUseCase(repository: reader))
+      findTeammates: FindCompatibleTeammatesUseCase(repository: reader),
+      prepareProposal: PrepareSquadProposalUseCase(repository: reader))
     planner.refreshProfile(hasUnsavedProfileChanges: false)
     planner.form.neededRole = .support
     planner.search()

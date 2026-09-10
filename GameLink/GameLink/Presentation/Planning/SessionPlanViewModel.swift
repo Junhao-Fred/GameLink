@@ -15,21 +15,31 @@ final class SessionPlanViewModel {
       }
     }
   }
-  var path: [SessionPlanDestination] = []
+  var path: [SessionPlanDestination] = [] {
+    didSet {
+      if !path.contains(.teammateDetails) { selectedTeammate = nil }
+    }
+  }
   var showsSearchFailure = false
   private(set) var savedProfile: GamingProfile?
   private(set) var loadState = SessionPlanLoadState.awaitingLoad
   private(set) var searchFailure: SessionPlanSearchFailure?
   private(set) var results: TeammateResultsViewModel?
+  private(set) var selectedTeammate: TeammateDetailsViewModel?
 
   private var hasInitialPlan = false
   private var hasUnsavedProfileChanges = false
   private let loadProfile: LoadGamingProfileUseCase
   private let findTeammates: FindCompatibleTeammatesUseCase
+  private let prepareProposal: PrepareSquadProposalUseCase
 
-  init(loadProfile: LoadGamingProfileUseCase, findTeammates: FindCompatibleTeammatesUseCase) {
+  init(
+    loadProfile: LoadGamingProfileUseCase, findTeammates: FindCompatibleTeammatesUseCase,
+    prepareProposal: PrepareSquadProposalUseCase
+  ) {
     self.loadProfile = loadProfile
     self.findTeammates = findTeammates
+    self.prepareProposal = prepareProposal
   }
 
   var canSearch: Bool { loadState == .ready && !hasUnsavedProfileChanges }
@@ -39,6 +49,7 @@ final class SessionPlanViewModel {
     if hasUnsavedProfileChanges {
       loadState = .unsavedProfileChanges
       results?.refresh(hasUnsavedProfileChanges: true)
+      selectedTeammate?.refresh(hasUnsavedProfileChanges: true)
       return
     }
     do {
@@ -59,6 +70,7 @@ final class SessionPlanViewModel {
       }
     } catch { loadState = .unavailable(error) }
     results?.refresh(hasUnsavedProfileChanges: false)
+    selectedTeammate?.refresh(hasUnsavedProfileChanges: false)
   }
 
   func search() {
@@ -84,10 +96,25 @@ final class SessionPlanViewModel {
     searchFailure = failure
     showsSearchFailure = true
   }
+
+  func openTeammate(_ teammateID: PlayerIdentifier) {
+    guard canSearch, case .available(let search) = results?.state,
+      search.matches.contains(where: { $0.id == teammateID })
+    else { return }
+    selectedTeammate = TeammateDetailsViewModel(
+      teammateID: teammateID, search: search, prepareProposal: prepareProposal)
+    path = [.results, .teammateDetails]
+  }
+
+  func returnToResults() {
+    path = [.results]
+    results?.refresh(hasUnsavedProfileChanges: hasUnsavedProfileChanges)
+  }
 }
 
 nonisolated enum SessionPlanDestination: Hashable {
   case results
+  case teammateDetails
 }
 
 nonisolated enum SessionPlanLoadState: Equatable {
