@@ -4,9 +4,9 @@ A native SwiftUI iOS project for League of Legends players with limited game tim
 
 ## Current status
 
-Stage 2: domain models, five business Use Cases, and a native Swift Testing target are implemented. The app still displays the Stage 1 informational home screen: the business layer is not connected to a UI or production storage yet. Profile editing, teammate search, and sharing are not available through the app. The home screen does not count toward the four functional screens required by the assessment.
+The app opens a functional Profile screen connected to the local JSON repository. Players can save their own profile, maintain a teammate directory, and privately exclude or restore teammates for future searches. Teammate editing uses a sheet. Session Plan, Teammate Results, and Teammate Details remain to be built; the four-screen assessment requirement is not yet complete.
 
-This is a fresh project, without the previous implementation or third-party dependencies. All project-authored interface text, comments, documentation, and test names must remain in English.
+This is a fresh project, without the previous implementation or third-party dependencies. All project-authored interface text, documentation, and test names must remain in English. Swift source comments, including DocC comments, are omitted at the owner's request; domain intent is described here instead.
 
 ## Domain problem and stakeholder
 
@@ -16,7 +16,7 @@ The planned MVP will help the player identify compatible teammates and prepare a
 
 ## MVP scope
 
-The business rules for the following capabilities are implemented and tested in isolation. Their functional screens and persistent storage remain to be built:
+The business rules for the following capabilities are implemented and covered by unit and local-file integration tests. Profile and teammate management have functional interfaces; matching and proposal sharing still need screens:
 
 - Save the player's own gaming profile and availability.
 - Record and update teammate details provided with their consent.
@@ -28,7 +28,7 @@ The local version searches the user's own teammate directory, not a live player 
 
 Creating or sharing a proposal is not evidence of delivery, acceptance, or a confirmed session. Players must confirm the exact date and arrangements outside GameLink. The app will not verify game-account ownership, skill, or current online status.
 
-Out of scope: account registration, cloud sync, Firebase, live stranger matching, in-app chat, payments, leaderboards, game-history scraping, game-client automation, and AI recommendations. Do not collect game passwords or access tokens.
+Out of scope: account registration, cloud sync, Firebase, live stranger matching, in-app chat, payments, leaderboards, game-history scraping, and game-client automation. Do not collect game passwords or access tokens.
 
 ## Planned screens and workflow
 
@@ -66,18 +66,22 @@ Implemented Use Case structs and their test suites:
 | Find compatible teammates | `FindCompatibleTeammatesUseCase` | `FindCompatibleTeammatesTests` |
 | Prepare an unconfirmed proposal | `PrepareSquadProposalUseCase` | `PrepareSquadProposalTests` |
 | Avoid or restore a teammate | `SetTeammateAvoidanceUseCase` | `SetTeammateAvoidanceTests` |
+| Open the player's saved profile | `LoadGamingProfileUseCase` | `LoadGamingProfileTests` |
+| Open saved teammates and their private search preferences | `LoadTeammateDirectoryUseCase` | `LoadTeammateDirectoryTests` |
 
 Every Use Case has a typed error enum with English recovery guidance, success tests, and failure tests. `WeeklyPlayWindowTests` separately covers time validation and overlap boundaries.
 
-The first persistence implementation is planned as an atomic JSON store in the app's private Application Support directory. Failed writes must preserve previous data; unreadable files must not be silently replaced with an empty directory of players.
+`LocalSquadNotebookRepository` implements `SquadNotebookRepository` using an atomic JSON file in the app's private Application Support directory. Persistence-specific Codable representations remain in the Data layer; domain models do not depend on a serialization format. Every decoded profile and play window passes through its existing validated initializer.
 
 Current source folders:
 
 - `GameLink/GameLink/App`: application entry point.
-- `GameLink/GameLink/Presentation`: informational home screen only.
+- `GameLink/GameLink/Presentation/Profile`: the personal profile screen, shared player fields, form validation, and profile ViewModel.
+- `GameLink/GameLink/Presentation/Teammates`: the directory section, teammate editor sheet, and their ViewModels.
 - `GameLink/GameLink/Domain`: immutable validated profiles and play windows, squad models, and the notebook repository contract.
-- `GameLink/GameLink/Application`: the five business Use Cases.
-- `GameLink/GameLinkTests`: independent Swift Testing suites and a test-only in-memory notebook.
+- `GameLink/GameLink/Application`: the seven business Use Cases.
+- `GameLink/GameLink/Data`: local notebook storage, versioned saved representations, and storage recovery errors.
+- `GameLink/GameLinkTests`: independent business suites, a test-only in-memory notebook, and isolated real-file integration tests.
 
 Value types describe domain records. Main-actor-isolated Use Cases and the repository contract keep each synchronous read/validate/save operation together. The test repository is a reference type because multiple Use Cases share a notebook during a workflow. Pure domain values are nonisolated and do not depend on SwiftUI. No inheritance or third-party abstraction framework is needed.
 
@@ -96,7 +100,21 @@ These are explicit MVP product rules to validate with stakeholders, not official
 - Proposals are drafts only: no message is transmitted, no session is accepted, and users must confirm the exact date externally. Thirty minutes of overlap does not guarantee a complete game.
 - Avoidance is private and reversible. Repeating the current preference performs no write; failed saves leave the previous notebook unchanged according to the repository contract.
 
-Production disk-write atomicity, corrupt-file recovery, and restart persistence are not established by the in-memory tests. They belong to Stage 3.
+## Local storage and recovery
+
+The production factory is `LocalSquadNotebookRepository.applicationSupport()`. It resolves `GameLink/squad-notebook.json` under the system-provided Application Support location; no computer username or absolute development-machine path is embedded. Tests inject a file URL inside a newly created temporary folder instead.
+
+- A genuinely missing file returns an empty notebook without creating data. The first successful save creates the required directory and file; there are no sample contacts or automatic seed data.
+- The format has `schemaVersion: 1`, an optional `ownProfile`, ordered `contacts`, and `avoidedPlayerIDs`. Profiles store a stable UUID, name, server, role, weekly availability, and voice preference. Availability explicitly stores `Australia/Sydney`; other time zones are rejected rather than silently reinterpreted.
+- Saved server, role, and weekday strings are part of version 1 of the format. Renaming these stored values requires an explicit migration, not a UI-only string change.
+- Decoding rejects invalid names, untrimmed names, missing profile fields, unknown enum values, invalid time windows, duplicate player identifiers, duplicate name/server pairs, contacts without an organiser, and orphaned or repeated avoidance identifiers. It does not repair these silently or invent defaults.
+- The version is checked before the rest of the document. Unsupported formats and damaged files block both reads and replacement saves. The original bytes remain in place; this stage provides preservation and recovery guidance, not an in-app backup restoration tool.
+- Each save validates the proposed notebook and re-reads the current file before replacing it. Foundation's [atomic write option](https://developer.apple.com/documentation/foundation/nsdata/writingoptions/atomic) writes an auxiliary file before replacing the destination. A failed save must not publish changes or truncate the previous notebook.
+- The repository has no cached copy of player details. Reads see the current file. If a repository has already seen a saved file and that file disappears, it reports missing saved details rather than creating an empty replacement. A new process cannot distinguish an externally deleted file from a true first launch; cross-process deletion recovery needs a separate backup strategy.
+- The write requests [complete file protection](https://developer.apple.com/documentation/foundation/nsdata/writingoptions/completefileprotection). This is an operating-system protection option, not application-managed encryption. Device lock/unlock behavior still requires physical-device validation.
+- Operations remain synchronous and main-actor-isolated for this small, single-process teammate directory. There is no app-group sharing, cross-process writer coordination, cloud sync, or background writing. Larger datasets would require revisiting this execution model.
+
+Do not delete app data or reinstall the app to recover an unreadable notebook: that can erase the only saved copy. Restore a known-good device backup or use an app version compatible with the saved format. GameLink does not create its own backups; system device-backup behavior is not configured or validated by this stage.
 
 ## Run locally
 
@@ -134,19 +152,33 @@ xcodebuild test \
   CODE_SIGNING_ALLOWED=NO
 ```
 
-Tests use a fresh, isolated in-memory repository for each scenario. They do not access live accounts, send messages, modify the app's saved data, or depend on test execution order. Failure injection happens before test-store mutation. Business testing does not yet constitute UI or persistence validation.
+Business unit tests use a fresh in-memory repository for each scenario. Storage and workflow integration tests use a unique temporary directory per invocation, with cleanup on exit; they never load or overwrite the app's real notebook. Permission changes in these isolated directories exercise actual file-read and atomic-write failures. Tests do not access live accounts, send messages, or depend on test execution order.
+
+Storage tests reopen new repository instances to verify that identities, contact order, avoidance, matching, and unconfirmed proposals use data read back from disk. Repository reopening tests alone do not establish end-to-end app termination/relaunch behavior.
+
+## Profile and teammate management
+
+The app entry point creates profile and directory ViewModels using the same local repository. Each ViewModel invokes named Use Cases; Views never read or write the notebook directly. `TeammateDirectoryEntry` represents one saved teammate together with the organiser's private search preference. Its identity comes from the saved contact, so changing a name does not replace a row or reset avoidance.
+
+- Save the organiser's profile before adding teammates. Unsaved profile edits must also be saved before managing the directory, so teammate validation uses the identity visible to the organiser.
+- Tap a teammate to edit their saved details. Add and edit use the same player fields as the organiser's form, with a separate draft and separate validation state.
+- Permission starts unchecked for every editing session. Confirm that the teammate agreed to storage of these details before saving. This is a user confirmation, not a verified permission record or an automatic notification.
+- A successful save closes the sheet and reloads the directory. An unsuccessful save leaves the draft open and keeps existing stored details unchanged. Field errors remain visible after dismissing the alert and clear when the affected input changes.
+- Cancel asks before discarding modified fields. Interactive sheet dismissal is disabled while a draft has unsaved changes. Merely opening or editing the form performs no write.
+- Use a teammate's search-preference menu to exclude or restore them. Avoided teammates remain visible and editable; their saved details are not deleted. Search eligibility is still determined by the matching Use Case when search screens are connected.
+- Unreadable storage is shown as unavailable, with a retry action; it is never presented as an empty directory. There are no seeded contacts in the production app.
 
 ## Remaining assessment work
 
-- Connect the business layer to production local storage, ViewModels, and at least four functional SwiftUI screens.
-- Present the existing domain errors with useful recovery actions in those screens.
-- Extend business tests with real persistence and complete workflow validation; the minimum Use Case and unit-test counts are already represented in code.
+- Complete Session Plan, Teammate Results, and Teammate Details, including proposal preview and system sharing.
+- Present the existing domain errors with useful recovery actions in the remaining screens.
+- Validate complete UI workflows, app termination/relaunch, and physical-device file protection; the minimum Use Case and unit-test counts are already represented in code.
 - Produce a one-page human-system architecture diagram in PDF or PNG, showing layers, responsibility boundaries, and the main data flow.
 - Write a 600-800-word English reflective report, grounded in actual design and validation evidence, and export it as PDF.
 - Validate the working app in Xcode and package the project for submission.
-- Provide a Git repository link only after the owner authorizes commits and a push.
+- Obtain owner approval of each new commit message before committing; obtain authorization before pushing further changes.
 
-Next development stage: production local persistence, validated decoding, atomic writes, and restart/failure tests. No UI feature is considered complete merely because its business logic exists.
+Next development stage: implement Session Plan and Teammate Results using the saved profile and teammate directory, then connect Teammate Details and proposal sharing.
 
 ## Foundation validation
 
@@ -156,8 +188,30 @@ Light and dark appearance were visually checked. The largest Dynamic Type size w
 
 Stage 2 adds 58 test methods, expanded into 75 test instances through parameterized cases. Two complete simulator runs passed with no failures or skipped tests. A temporary mutation from "at least 30 minutes" to "more than 30 minutes" correctly failed the boundary test; the correct rule was restored before the final passing run. Swift formatting and the English-only source check also passed. Results validate the domain layer and test-repository behavior, not real disk persistence or a completed MVP.
 
+## Stage 3 validation
+
+On September 9, 2026, the full Xcode simulator run passed 91 test methods, expanded into 151 executed test instances, with zero failures. One additional physical-device file-protection test is explicitly skipped on Simulator. The project now contains 92 test methods in total.
+
+New real-file tests cover fresh storage, repeated reads, a separately specified version-1 document, profile and availability validation, identity and avoidance consistency, nested directory creation, complete replacement writes, damaged or unsupported data preservation, read failures, failed first saves, failed replacement saves, and successful retry. A workflow test reopens storage between all five business operations; another verifies stable identities and avoidance after profile edits. Each test uses its own temporary directory and cleans it up.
+
+An initial file-protection attribute assertion failed because the iOS 26.5 simulator returned no protection attribute. An independent direct Foundation write reproduced the same missing attribute, without using the GameLink repository. The attribute assertion is now a separate device-only test, not a simulated security pass. Actual locked-device access, process termination/relaunch, device-backup restoration, and interruption during the operating system's replacement operation remain unverified.
+
+Swift formatting, whitespace, English-only content, absence of Swift source comments, and absence of embedded local development paths were checked. Existing domain models, Use Cases, and the informational SwiftUI screen were not changed. No new dependency was added.
+
+## Teammate management validation
+
+On September 10, 2026, the updated app compiled and its full simulator test run passed 132 test methods, with one existing physical-device file-protection test skipped. Parameterized cases expanded the passing methods into 201 executed test instances. The three new teammate suites add 21 test methods covering directory loading, permission, duplicate contacts, draft preservation, midnight boundaries, stable identity, avoidance, retry, and disk reopening.
+
+The profile save and empty teammate directory were inspected on a separate test simulator using fictional details. That inspection exposed repeated sheet presentation from a Form section. The sheet and directory alerts were moved to the enclosing Form. Follow-up UI checks confirmed that the corrected sheet opens, missing permission blocks saving without losing the draft, and a permitted save adds the teammate to the directory. Editing a name updates the existing row, permission starts unchecked on each edit, and discarding an edited voice preference leaves the saved preference unchanged.
+
+The avoidance menu was exercised in both directions. After terminating and relaunching the app, the edited teammate and exclusion state were still present; restoring inclusion removed the exclusion label. Light appearance at the default text size and dark appearance at the largest Dynamic Type size were visually checked. The profile and teammate forms could be scrolled through to the directory, permission control, and save button, with long labels wrapping instead of being clipped. The test simulator was returned to light appearance and the default text size afterward.
+
+The final full simulator test run passed with 201 passing test instances, one device-only test skipped, and no failures. Small-phone, iPad, physical-device, spoken VoiceOver, and interrupted-write behavior remain unverified. Simulator touch-flow checks do not establish physical-device file-protection behavior.
+
 ## Git
 
-Keep all work local. Do not stage, commit, or push without explicit owner approval. Do not restore the previous project's Git history or manufacture retrospective commits.
+Development continues locally on `profile-development`. The remote `main` branch does not yet include the profile screens or teammate-management changes. Documentation and storage tests accompany the local implementation.
 
-The intended remote is [Junhao-Fred/GameLink](https://github.com/Junhao-Fred/GameLink). If publishing is authorized later, verify the active account is `Junhao-Fred` and verify the destination before pushing. The assessment's version-control requirement remains pending while commits are paused.
+Keep further work local until approved. Confirm each new commit message with the owner before committing; do not push without authorization. Do not restore the previous project's Git history or manufacture retrospective commits.
+
+The remote is the private repository [Junhao-Fred/GameLink](https://github.com/Junhao-Fred/GameLink). Before any authorized push, verify the active account is `Junhao-Fred` and verify the destination.
