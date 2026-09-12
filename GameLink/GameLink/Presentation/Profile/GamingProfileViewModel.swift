@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// Owns the organiser's editable profile and presents save outcomes without discarding drafts.
+/// Keeps the profile draft and shows save results without losing edits.
 @MainActor
 @Observable
 final class GamingProfileViewModel {
@@ -29,12 +29,12 @@ final class GamingProfileViewModel {
     loadState == .ready && (savedProfile == nil || hasUnsavedChanges)
   }
 
-  /// Whether teammate operations can use a saved profile that matches the visible draft.
+  /// Whether the visible profile matches saved details and can be used to manage teammates.
   var canManageTeammates: Bool {
     loadState == .ready && savedProfile != nil && !hasUnsavedChanges
   }
 
-  /// Loads once after success so revisiting Profile does not overwrite unsaved edits.
+  /// Loads until successful, then keeps any unsaved edits when revisiting Profile.
   func loadIfNeeded() {
     guard loadState != .ready else { return }
     do {
@@ -46,7 +46,7 @@ final class GamingProfileViewModel {
     } catch { loadState = .unavailable(error) }
   }
 
-  /// Validates the form and updates saved state only after the business operation succeeds.
+  /// Validates and saves the form; updates saved state only on success.
   func save() {
     guard canSave else { return }
     let draft: GamingProfileDraft

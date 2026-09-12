@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Connects the app's screens to Use Cases sharing the same local notebook repository.
+/// Connects the screens to business operations and shared local storage.
 @main
 struct GameLinkApp: App {
   @State private var profileViewModel: GamingProfileViewModel?
@@ -31,7 +31,7 @@ struct GameLinkApp: App {
     }
   }
 
-  /// Builds the workspace dependencies or presents a retryable storage-setup failure.
+  /// Opens local storage and prepares the workspace, or shows a retry message.
   private func openNotebook() {
     do {
       let repository = try LocalSquadNotebookRepository.applicationSupport()

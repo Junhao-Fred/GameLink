@@ -1,12 +1,12 @@
 import Foundation
 
-/// One explicit sharing attempt, identified separately from the proposal being reviewed.
+/// One sharing attempt with its own ID.
 nonisolated struct SquadProposalShareRequest: Identifiable, Equatable, Sendable {
   let id: UUID
   let text: String
 }
 
-/// A system share-action outcome, never proof of message delivery or teammate acceptance.
+/// A share-action result; it does not confirm delivery or acceptance.
 nonisolated enum SquadProposalShareOutcome: Equatable, Sendable {
   case activityCompleted
   case cancelled

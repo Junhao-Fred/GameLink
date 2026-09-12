@@ -1,18 +1,18 @@
-/// The organiser's local profile, teammate directory and private search exclusions.
-/// Contacts require an organiser and unique identities; exclusions must refer to saved contacts.
-/// Existing exclusions remain stored and applied even though this version cannot edit them.
+/// The organiser's profile, saved teammates and private exclusions.
+/// Teammates need an organiser and unique identities; exclusions must refer to saved teammates.
+/// Existing exclusions still apply even though this version cannot edit them.
 nonisolated struct SquadNotebook: Equatable, Sendable {
   var ownProfile: GamingProfile?
   var contacts: [TeammateContact] = []
   var avoidedPlayerIDs: Set<PlayerIdentifier> = []
 }
 
-/// The storage contract used by business operations without depending on JSON or file paths.
-/// Implementations report known access failures as `SquadNotebookAccessError` to retain recovery guidance.
+/// Loads and saves squad details without exposing JSON or file paths.
+/// Known failures use `SquadNotebookAccessError` so recovery guidance reaches the player.
 @MainActor
 protocol SquadNotebookRepository {
-  /// Returns the current notebook, reporting unavailable data instead of inventing contacts.
+  /// Loads saved details or reports a failure; never invents contacts.
   func loadNotebook() throws -> SquadNotebook
-  /// Replaces the notebook; a failed save must preserve the previously stored details.
+  /// Saves the notebook; failure must leave previous details unchanged.
   func saveNotebook(_ notebook: SquadNotebook) throws
 }

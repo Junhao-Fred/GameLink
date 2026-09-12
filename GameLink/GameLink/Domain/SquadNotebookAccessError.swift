@@ -1,7 +1,7 @@
 import Foundation
 
-/// Reasons saved squad details cannot be used, with guidance that preserves the original notebook.
-/// Business operations carry these failures to players without exposing JSON or file-system errors.
+/// Reasons saved details cannot be used, with guidance that protects the original file.
+/// Business operations preserve these reasons when reporting errors.
 nonisolated enum SquadNotebookAccessError: LocalizedError, Equatable, Sendable {
   case notebookLocationUnavailable
   case savedDetailsUnreadable

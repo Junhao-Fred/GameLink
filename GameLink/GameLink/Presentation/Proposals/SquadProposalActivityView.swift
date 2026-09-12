@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Hands reviewed proposal text to the system share sheet and reports its action outcome.
+/// Shares reviewed text through iOS and reports the result.
 struct SquadProposalActivityView: UIViewControllerRepresentable {
   let request: SquadProposalShareRequest
   let completion: @MainActor (UUID, SquadProposalShareOutcome) -> Void

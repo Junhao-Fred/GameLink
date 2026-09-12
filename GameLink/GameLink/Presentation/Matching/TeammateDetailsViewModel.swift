@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// Coordinates teammate validation, proposal preview and user-initiated system sharing.
+/// Rechecks a teammate and manages proposal preview and sharing.
 @MainActor
 @Observable
 final class TeammateDetailsViewModel {
@@ -41,14 +41,14 @@ final class TeammateDetailsViewModel {
 
   func refresh() { _ = checkedProposal() }
 
-  /// Reveals the inline preview only after rechecking the teammate and shared time.
+  /// Rechecks the match before showing the preview.
   func reviewProposal() {
     guard let proposal = checkedProposal() else { return }
     shareOutcome = nil
     proposalPreview = proposal
   }
 
-  /// Rechecks the notebook immediately before handing proposal text to system sharing.
+  /// Rechecks saved details immediately before opening system sharing.
   func requestSharing() {
     guard proposalPreview != nil, shareRequest == nil else { return }
     guard let proposal = checkedProposal() else { return }
@@ -58,7 +58,7 @@ final class TeammateDetailsViewModel {
     shareRequest = request
   }
 
-  /// Records only the active request's outcome, ignoring callbacks from older share attempts.
+  /// Accepts only the active share request's result; ignores older callbacks.
   func completeSharing(requestID: UUID, outcome: SquadProposalShareOutcome) {
     guard activeShareID == requestID else { return }
     shareOutcome = outcome

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shared weekday, start-time and duration controls using the app's Sydney-time convention.
+/// Shared weekday, start-time and duration controls using Sydney time.
 struct WeeklyPlayWindowFields: View {
   @Binding var day: PlayDay?
   @Binding var startTime: Date

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Collects session requirements or explains which profile step must be completed first.
+/// Collects a session plan or explains which profile step is missing.
 struct SessionPlanView: View {
   @Bindable var viewModel: SessionPlanViewModel
   let openProfile: () -> Void

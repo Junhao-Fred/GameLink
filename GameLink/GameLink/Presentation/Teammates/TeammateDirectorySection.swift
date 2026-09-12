@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Lists saved teammates and hosts their editor within the Profile page.
+/// Shows saved teammates and their inline editor in Profile.
 struct TeammateDirectorySection: View {
   @Bindable var viewModel: TeammateDirectoryViewModel
   let canManageTeammates: Bool

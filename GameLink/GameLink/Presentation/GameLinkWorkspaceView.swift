@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Connects the four workspace tabs and guides players through missing search prerequisites.
+/// Connects the four tabs and guides players through missing setup steps.
 struct GameLinkWorkspaceView: View {
   let profile: GamingProfileViewModel
   let teammateDirectory: TeammateDirectoryViewModel

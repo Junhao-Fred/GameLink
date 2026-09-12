@@ -1,6 +1,6 @@
 import Foundation
 
-/// In-progress profile input, including choices the player has not yet completed.
+/// Editable profile input, including unfinished choices.
 nonisolated struct GamingProfileForm: Equatable {
   var gamerTag: String
   var server: GameServer?
@@ -33,7 +33,7 @@ nonisolated struct GamingProfileForm: Equatable {
     return window.summary
   }
 
-  /// Requires a server, position, weekday and valid play window before creating a draft.
+  /// Checks server, position, weekday and time before creating a draft.
   func makeDraft() throws(GamingProfileFormError) -> GamingProfileDraft {
     guard let server else { throw .chooseServer }
     guard let preferredRole else { throw .chooseRole }

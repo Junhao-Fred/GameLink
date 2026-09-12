@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Edits teammate details inside Profile with permission and explicit save/cancel actions.
+/// Edits teammate details in Profile, with permission, save and cancel controls.
 struct TeammateContactEditorSection: View {
   @FocusState private var isPlayerNameFocused: Bool
   @Bindable var viewModel: TeammateContactEditorViewModel

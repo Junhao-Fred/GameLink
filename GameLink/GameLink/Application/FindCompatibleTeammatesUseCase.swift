@@ -1,12 +1,11 @@
 import Foundation
 
-/// Finds eligible saved teammates for a session that fits the organiser's availability.
+/// Finds saved teammates for a session within the organiser's availability.
 @MainActor
 struct FindCompatibleTeammatesUseCase {
   let repository: any SquadNotebookRepository
   let matchingRule: any TeammateMatchingRule
 
-  /// Uses the supplied notebook and the shared saved-teammate eligibility rule.
   init(
     repository: any SquadNotebookRepository,
     matchingRule: any TeammateMatchingRule = SavedTeammateMatchingRule()
@@ -15,7 +14,7 @@ struct FindCompatibleTeammatesUseCase {
     self.matchingRule = matchingRule
   }
 
-  /// Loads the organiser whose availability sets the initial session search conditions.
+  /// Loads the organiser to set the initial session time.
   func loadOrganiser() throws(FindCompatibleTeammatesError) -> GamingProfile {
     let notebook: SquadNotebook
     do { notebook = try repository.loadNotebook() } catch let failure as SquadNotebookAccessError {
@@ -25,7 +24,7 @@ struct FindCompatibleTeammatesUseCase {
     return organiser
   }
 
-  /// Excludes avoided players and ranks compatible teammates by longest shared time first.
+  /// Excludes avoided players and sorts matches by longest shared time.
   func execute(_ plan: SquadPlan) throws(FindCompatibleTeammatesError) -> SquadSearch {
     let notebook: SquadNotebook
     do { notebook = try repository.loadNotebook() } catch let failure as SquadNotebookAccessError {

@@ -1,7 +1,7 @@
 import Foundation
 
-/// Bridges minute-of-day values and picker dates without applying the device's time zone.
-/// GMT is only a fixed picker reference; domain availability remains Sydney wall-clock time.
+/// Converts minutes to picker dates without device time-zone shifts.
+/// The picker uses GMT as a fixed reference; play windows still use Sydney time.
 nonisolated enum PlayWindowClock {
   static let calendar: Calendar = {
     var calendar = Calendar(identifier: .gregorian)

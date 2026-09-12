@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Displays a teammate, shared time and inline proposal review on the Details page.
+/// Shows teammate details, shared time and the inline proposal preview.
 struct TeammateDetailsView: View {
   @Bindable var viewModel: TeammateDetailsViewModel
   let openProfile: () -> Void

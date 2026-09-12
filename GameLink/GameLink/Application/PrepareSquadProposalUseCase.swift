@@ -1,12 +1,11 @@
 import Foundation
 
-/// Rechecks a selected match before preparing an unconfirmed session proposal.
+/// Rechecks a match before creating an unconfirmed proposal.
 @MainActor
 struct PrepareSquadProposalUseCase {
   let repository: any SquadNotebookRepository
   let matchingRule: any TeammateMatchingRule
 
-  /// Uses the supplied notebook and the shared saved-teammate eligibility rule.
   init(
     repository: any SquadNotebookRepository,
     matchingRule: any TeammateMatchingRule = SavedTeammateMatchingRule()
@@ -15,7 +14,7 @@ struct PrepareSquadProposalUseCase {
     self.matchingRule = matchingRule
   }
 
-  /// Reloads profiles and avoidance, rejecting stale results and recalculating shared time.
+  /// Reloads profiles and exclusions, rejects stale matches and recalculates shared time.
   func execute(
     teammateID: PlayerIdentifier, from search: SquadSearch
   ) throws(PrepareSquadProposalError) -> SquadProposal {

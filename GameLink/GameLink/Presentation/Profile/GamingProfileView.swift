@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Lets the organiser maintain their profile and permission-based teammates on one page.
+/// Edits the organiser's profile and permission-based teammate details on one page.
 struct GamingProfileView: View {
   @Bindable var viewModel: GamingProfileViewModel
   @Bindable var teammateDirectory: TeammateDirectoryViewModel
@@ -56,7 +56,7 @@ struct GamingProfileView: View {
     }
     .navigationTitle("Profile")
     .toolbar {
-      // Keep saving reachable while the form scrolls behind the floating tab bar.
+      // Keep Save visible while the form scrolls.
       ToolbarItem(placement: .confirmationAction) {
         Button("Save", action: saveProfile)
           .disabled(!viewModel.canSave || teammateDirectory.editor != nil)

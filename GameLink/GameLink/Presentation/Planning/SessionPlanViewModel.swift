@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// Owns the session draft, matching results and selected teammate across the four tabs.
+/// Keeps the plan draft, matches and selected teammate across tabs.
 @MainActor
 @Observable
 final class SessionPlanViewModel {
@@ -9,7 +9,7 @@ final class SessionPlanViewModel {
   var form = SessionPlanForm() {
     didSet {
       guard form != oldValue else { return }
-      // Results and selected details belong to the previous session conditions.
+      // The old matches and selection no longer fit the edited plan.
       results = nil
       selectedTeammate = nil
       if searchFailure?.field?.hasChanged(from: oldValue, to: form) == true {
@@ -40,7 +40,7 @@ final class SessionPlanViewModel {
 
   var canSearch: Bool { loadState == .ready && !hasUnsavedProfileChanges }
 
-  /// Rechecks saved context while preventing searches based on unfinished profile edits.
+  /// Reloads saved context and blocks matching while profile edits are unsaved.
   func refreshProfile(hasUnsavedProfileChanges: Bool) {
     self.hasUnsavedProfileChanges = hasUnsavedProfileChanges
     if hasUnsavedProfileChanges {
@@ -73,7 +73,7 @@ final class SessionPlanViewModel {
     selectedTeammate?.refresh(hasUnsavedProfileChanges: false)
   }
 
-  /// Searches the current draft and opens Matches only after a successful validation.
+  /// Searches the draft and opens Matches only on success.
   func search() {
     guard canSearch else { return }
     results = nil
@@ -99,7 +99,7 @@ final class SessionPlanViewModel {
     showsSearchFailure = true
   }
 
-  /// Opens Details only for a teammate present in the currently available search results.
+  /// Opens Details only for a teammate in the current results.
   func openTeammate(_ teammateID: PlayerIdentifier) {
     guard canSearch, case .available(let search) = results?.state,
       search.matches.contains(where: { $0.id == teammateID })
@@ -109,7 +109,7 @@ final class SessionPlanViewModel {
     selectedTab = .details
   }
 
-  /// Clears the selected detail and rechecks matches while retaining the session draft.
+  /// Clears the selection and refreshes Matches, keeping the plan draft.
   func returnToResults() {
     selectedTeammate = nil
     selectedTab = .matches

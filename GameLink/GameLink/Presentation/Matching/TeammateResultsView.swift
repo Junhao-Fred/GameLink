@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shows compatible saved teammates and recovery actions when matching cannot proceed.
+/// Shows matching teammates or explains how to recover from a search failure.
 struct TeammateResultsView: View {
   let viewModel: TeammateResultsViewModel
   let openProfile: () -> Void

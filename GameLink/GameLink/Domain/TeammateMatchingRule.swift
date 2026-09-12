@@ -1,18 +1,16 @@
-/// Decides whether a saved teammate fits the requested session and returns their shared time.
-/// Matching excludes the organiser, requires the same server and requested position, honours
-/// required voice chat and requires at least 30 shared minutes. Use Cases additionally check
-/// the organiser's availability and private exclusions before accepting a match.
+/// Checks whether a saved teammate fits the plan and returns their shared time.
+/// Excludes the organiser; requires the same server, requested position and at least 30 shared minutes.
+/// Voice support is needed only when requested. Use Cases check organiser availability and exclusions.
 nonisolated protocol TeammateMatchingRule: Sendable {
-  /// Returns the eligible teammate and actual overlap, or nil when a condition is not met.
+  /// Returns a match and its shared time, or nil if a condition fails.
   func match(
     for contact: TeammateContact, organiser: GamingProfile, plan: SquadPlan
   ) -> TeammateMatch?
 }
 
-/// Applies GameLink's matching conditions to self-reported profiles in a saved gaming circle.
+/// Applies matching rules to self-reported profiles in the saved circle.
 nonisolated struct SavedTeammateMatchingRule: TeammateMatchingRule {
-  /// Checks a teammate's identity, server, role, voice preference and shared time.
-  /// The search Use Case separately checks own availability and private avoidance.
+  /// Checks identity, server, position, voice support and shared time.
   func match(
     for contact: TeammateContact, organiser: GamingProfile, plan: SquadPlan
   ) -> TeammateMatch? {

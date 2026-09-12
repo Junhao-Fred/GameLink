@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Reuses player-detail and availability fields for both the organiser and teammates.
+/// Shared profile and time fields for the organiser and teammates.
 struct GamingProfileFields: View {
   @Binding var form: GamingProfileForm
   let failureField: GamingProfileField?

@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// Owns one inline teammate draft and refreshes the directory after a successful save.
+/// Manages one teammate draft and reloads the directory after saving.
 @MainActor
 @Observable
 final class TeammateDirectoryViewModel {
@@ -17,7 +17,7 @@ final class TeammateDirectoryViewModel {
     self.saveContact = saveContact
   }
 
-  /// Reloads saved contacts without replacing an unfinished editing draft.
+  /// Reloads teammates without replacing an unfinished draft.
   func reload() {
     do {
       entries = try saveContact.loadSavedTeammates()
@@ -41,7 +41,7 @@ final class TeammateDirectoryViewModel {
     editor = TeammateContactEditorViewModel(saveContact: saveContact, contact: savedEntry.contact)
   }
 
-  /// Keeps failed drafts open and closes the editor only after its details are saved.
+  /// Closes the editor only after saving; failures keep it open.
   func saveEditor() {
     guard let editor, editor.save() else { return }
     self.editor = nil
@@ -50,7 +50,7 @@ final class TeammateDirectoryViewModel {
     saveConfirmation = "Teammate saved on this device."
   }
 
-  /// Requests confirmation before discarding any unsaved teammate details.
+  /// Asks before discarding unsaved teammate changes.
   func requestCancelEditing() {
     if editor?.hasUnsavedChanges == true {
       showsDiscardConfirmation = true
@@ -59,7 +59,7 @@ final class TeammateDirectoryViewModel {
     }
   }
 
-  /// Discards only the in-memory draft; saved contacts remain unchanged.
+  /// Discards the draft without changing saved teammates.
   func discardEditor() {
     editor = nil
     showsDiscardConfirmation = false

@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// Owns one teammate-editing draft and requires permission confirmation for every edit session.
+/// Keeps one teammate draft and requires fresh permission for each edit session.
 @MainActor
 @Observable
 final class TeammateContactEditorViewModel: Identifiable {
@@ -41,7 +41,7 @@ final class TeammateContactEditorViewModel: Identifiable {
     savedContact == nil && (form != initialForm || permissionConfirmed)
   }
 
-  /// Returns true only after saving; failures leave the entered teammate details available.
+  /// Returns true after saving; failures keep the draft.
   @discardableResult
   func save() -> Bool {
     guard savedContact == nil else { return false }

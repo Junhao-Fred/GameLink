@@ -131,7 +131,7 @@ nonisolated enum RecoveryScenario: CaseIterable {
   }
 }
 
-/// Simulates a notebook becoming unavailable between the initial read and the guarded write.
+/// Simulates a storage failure after reading but before saving.
 @MainActor
 private final class SaveFailingNotebookRepository: SquadNotebookRepository {
   let notebook: SquadNotebook

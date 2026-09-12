@@ -1,11 +1,11 @@
 import Foundation
 
-/// Records a teammate after permission is confirmed, rejecting self-records and duplicates.
+/// Saves a teammate with permission, rejecting duplicates and the organiser's own profile.
 @MainActor
 struct SaveTeammateContactUseCase {
   let repository: any SquadNotebookRepository
 
-  /// Opens contacts for editing while preserving exclusions saved by earlier versions.
+  /// Loads saved teammates, including existing exclusions.
   func loadSavedTeammates() throws(SaveTeammateContactError) -> [TeammateDirectoryEntry] {
     let notebook: SquadNotebook
     do { notebook = try repository.loadNotebook() } catch let failure as SquadNotebookAccessError {
@@ -18,7 +18,7 @@ struct SaveTeammateContactUseCase {
     }
   }
 
-  /// Adds a contact or updates the supplied identity without replacing another teammate.
+  /// Adds or updates one teammate without replacing another.
   func execute(
     _ draft: GamingProfileDraft,
     contactID: PlayerIdentifier? = nil,

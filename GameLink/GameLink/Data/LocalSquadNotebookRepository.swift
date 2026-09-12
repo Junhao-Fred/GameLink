@@ -1,6 +1,6 @@
 import Foundation
 
-/// Stores one validated squad notebook as JSON in the app's private local storage.
+/// Stores the validated notebook as a private JSON file.
 @MainActor
 final class LocalSquadNotebookRepository: SquadNotebookRepository {
   let fileURL: URL
@@ -11,7 +11,7 @@ final class LocalSquadNotebookRepository: SquadNotebookRepository {
     self.fileURL = fileURL
   }
 
-  /// Resolves the app's notebook location without embedding a development-machine path.
+  /// Finds the notebook in the app's Application Support folder.
   static func applicationSupport() throws(SquadNotebookAccessError) -> LocalSquadNotebookRepository
   {
     do {
@@ -23,7 +23,7 @@ final class LocalSquadNotebookRepository: SquadNotebookRepository {
     } catch { throw .notebookLocationUnavailable }
   }
 
-  /// Reads and validates saved details, distinguishing first launch from a missing known file.
+  /// Loads saved details; a missing file is empty only if this repository has never seen saved data.
   func loadNotebook() throws(SquadNotebookAccessError) -> SquadNotebook {
     let contents: Data
     do {
@@ -47,11 +47,11 @@ final class LocalSquadNotebookRepository: SquadNotebookRepository {
     } catch { throw .savedDetailsInvalid }
   }
 
-  /// Validates both the replacement and existing data before an atomic file write.
+  /// Validates new and existing data before replacing the file atomically.
   func saveNotebook(_ notebook: SquadNotebook) throws(SquadNotebookAccessError) {
     let savedNotebook = SavedSquadNotebook(notebook: notebook)
     do { _ = try savedNotebook.restoredNotebook() } catch { throw .savedDetailsInvalid }
-    // Unreadable or unsupported saved data must not be overwritten by a new notebook.
+    // Do not overwrite unreadable or incompatible saved data.
     _ = try loadNotebook()
     do {
       let encoder = JSONEncoder()
@@ -65,7 +65,7 @@ final class LocalSquadNotebookRepository: SquadNotebookRepository {
   }
 }
 
-/// Reads the format version before attempting to decode its profile fields.
+/// Checks the saved format version before reading profiles.
 nonisolated private struct SavedNotebookVersion: Decodable {
   let schemaVersion: Int
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-/// The versioned JSON representation, kept separate from domain value types.
+/// The notebook's versioned JSON format, separate from domain models.
 nonisolated struct SavedSquadNotebook: Codable {
   let schemaVersion: Int
   let ownProfile: SavedGamingProfile?
@@ -16,7 +16,7 @@ nonisolated struct SavedSquadNotebook: Codable {
     }
   }
 
-  /// Restores domain values only when identities, contacts and avoidance references are valid.
+  /// Restores the notebook after checking profiles, duplicates and exclusions.
   func restoredNotebook() throws -> SquadNotebook {
     guard schemaVersion == 1 else { throw SquadNotebookAccessError.unsupportedStorageVersion }
     let organiser = try ownProfile?.restoredProfile()
@@ -42,7 +42,7 @@ nonisolated struct SavedSquadNotebook: Codable {
   }
 }
 
-/// Serializable player details that must pass domain validation when reopened.
+/// Saved player fields that must pass validation when loaded.
 nonisolated struct SavedGamingProfile: Codable {
   let playerID: UUID
   let gamerTag: String
@@ -60,7 +60,7 @@ nonisolated struct SavedGamingProfile: Codable {
     usesVoiceChat = profile.usesVoiceChat
   }
 
-  /// Rejects unknown preferences and invalid names instead of silently repairing saved data.
+  /// Rejects unknown preferences or invalid names without changing saved data.
   func restoredProfile() throws -> GamingProfile {
     guard let server = GameServer(rawValue: server),
       let role = PreferredRole(rawValue: preferredRole)
@@ -74,7 +74,7 @@ nonisolated struct SavedGamingProfile: Codable {
   }
 }
 
-/// Stored weekly availability with an explicit Sydney time-zone identifier.
+/// Saved availability with its Sydney time-zone identifier.
 nonisolated struct SavedWeeklyPlayWindow: Codable {
   let day: String
   let startMinute: Int
@@ -88,7 +88,7 @@ nonisolated struct SavedWeeklyPlayWindow: Codable {
     timeZoneIdentifier = WeeklyPlayWindow.timeZoneIdentifier
   }
 
-  /// Restores a valid same-day window without reinterpreting an unsupported time zone.
+  /// Restores a valid window only when the saved time zone is supported.
   func restoredWindow() throws -> WeeklyPlayWindow {
     guard let day = PlayDay(rawValue: day),
       timeZoneIdentifier == WeeklyPlayWindow.timeZoneIdentifier

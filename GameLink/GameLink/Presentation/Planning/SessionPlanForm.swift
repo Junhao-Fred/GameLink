@@ -1,6 +1,6 @@
 import Foundation
 
-/// Editable session conditions kept separate from a validated squad plan.
+/// Editable session input, kept separate from a validated plan.
 nonisolated struct SessionPlanForm: Equatable {
   var playDay: PlayDay?
   var startMinute: Int
@@ -27,7 +27,7 @@ nonisolated struct SessionPlanForm: Equatable {
     return window.summary
   }
 
-  /// Creates a plan after a needed position, weekday and supported time window are supplied.
+  /// Builds a plan after checking position, weekday and time.
   func makePlan() throws(SessionPlanFormError) -> SquadPlan {
     guard let neededRole else { throw .chooseNeededRole }
     guard let playDay else { throw .choosePlayDay }

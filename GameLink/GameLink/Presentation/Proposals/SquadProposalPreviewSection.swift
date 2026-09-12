@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Shows the reviewed proposal inside Details without adding another app page.
+/// Shows the proposal preview within Details.
 struct SquadProposalPreviewSection: View {
   @Bindable var viewModel: TeammateDetailsViewModel
   let proposal: SquadProposal
