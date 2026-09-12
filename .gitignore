@@ -7,11 +7,3 @@ xcuserdata/
 *.xcresult
 *.ipa
 *.dSYM/
-
-# Local assessment deliverables and acceptance notes
-/docs/ReflectiveReport.md
-/docs/FinalAcceptance.md
-/docs/HumanSystemArchitecture.svg
-/output/GameLink-Submission.zip
-/output/pdf/GameLink-Reflective-Report.pdf
-/output/pdf/GameLink-Human-System-Architecture.pdf
