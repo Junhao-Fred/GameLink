@@ -1,9 +1,24 @@
 import Foundation
 
+/// Saves a teammate with permission, rejecting duplicates and the organiser's own profile.
 @MainActor
 struct SaveTeammateContactUseCase {
   let repository: any SquadNotebookRepository
 
+  /// Loads saved teammates, including existing exclusions.
+  func loadSavedTeammates() throws(SaveTeammateContactError) -> [TeammateDirectoryEntry] {
+    let notebook: SquadNotebook
+    do { notebook = try repository.loadNotebook() } catch let failure as SquadNotebookAccessError {
+      throw .notebookAccess(failure)
+    } catch { throw .notebookUnavailable }
+    guard notebook.ownProfile != nil else { throw .ownProfileRequired }
+    return notebook.contacts.map { contact in
+      TeammateDirectoryEntry(
+        contact: contact, isAvoided: notebook.avoidedPlayerIDs.contains(contact.id))
+    }
+  }
+
+  /// Adds or updates one teammate without replacing another.
   func execute(
     _ draft: GamingProfileDraft,
     contactID: PlayerIdentifier? = nil,
@@ -11,7 +26,9 @@ struct SaveTeammateContactUseCase {
   ) throws(SaveTeammateContactError) -> TeammateContact {
     guard permissionConfirmed else { throw .permissionRequired }
     var notebook: SquadNotebook
-    do { notebook = try repository.loadNotebook() } catch { throw .notebookUnavailable }
+    do { notebook = try repository.loadNotebook() } catch let failure as SquadNotebookAccessError {
+      throw .notebookAccess(failure)
+    } catch { throw .notebookUnavailable }
     guard let organiser = notebook.ownProfile else { throw .ownProfileRequired }
     if contactID == organiser.id { throw .cannotRecordYourself }
     if let contactID, !notebook.contacts.contains(where: { $0.id == contactID }) {
@@ -35,7 +52,9 @@ struct SaveTeammateContactUseCase {
     } else {
       notebook.contacts.append(contact)
     }
-    do { try repository.saveNotebook(notebook) } catch { throw .contactNotSaved }
+    do { try repository.saveNotebook(notebook) } catch let failure as SquadNotebookAccessError {
+      throw .notebookAccess(failure)
+    } catch { throw .contactNotSaved }
     return contact
   }
 }
@@ -48,6 +67,7 @@ nonisolated enum SaveTeammateContactError: LocalizedError, Equatable, Sendable {
   case duplicateTeammate
   case contactNoLongerExists
   case notebookUnavailable
+  case notebookAccess(SquadNotebookAccessError)
   case contactNotSaved
 
   var errorDescription: String? {
@@ -63,6 +83,7 @@ nonisolated enum SaveTeammateContactError: LocalizedError, Equatable, Sendable {
       "This teammate name and server are already saved. Open the existing contact to update their details."
     case .contactNoLongerExists:
       "This teammate is no longer in your directory. Return to your teammate list before editing."
+    case .notebookAccess(let reason): reason.errorDescription
     case .notebookUnavailable:
       "Your teammate directory could not be read. Reopen GameLink and try again; your saved data has not been replaced."
     case .contactNotSaved:

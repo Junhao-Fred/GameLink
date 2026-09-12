@@ -1,5 +1,6 @@
 import Foundation
 
+/// A local player ID that stays the same when details change.
 nonisolated struct PlayerIdentifier: Hashable, Sendable {
   let rawValue: UUID
 
@@ -8,12 +9,14 @@ nonisolated struct PlayerIdentifier: Hashable, Sendable {
   }
 }
 
+/// A supported game server; teammates must use the same server.
 nonisolated enum GameServer: String, CaseIterable, Sendable {
   case oceania = "Oceania"
   case europeWest = "Europe West"
   case northAmerica = "North America"
 }
 
+/// The League of Legends position a player offers or a session needs.
 nonisolated enum PreferredRole: String, CaseIterable, Sendable {
   case top = "Top"
   case jungle = "Jungle"
@@ -22,6 +25,8 @@ nonisolated enum PreferredRole: String, CaseIterable, Sendable {
   case support = "Support"
 }
 
+/// Player details awaiting validation.
+/// Names are trimmed and must have 1...40 characters with no control characters.
 nonisolated struct GamingProfileDraft: Equatable, Sendable {
   var gamerTag: String
   var server: GameServer
@@ -30,6 +35,8 @@ nonisolated struct GamingProfileDraft: Equatable, Sendable {
   var usesVoiceChat: Bool
 }
 
+/// A player's self-reported preferences and weekly availability.
+/// Names have 1...40 characters with no control characters; identity is not verified.
 nonisolated struct GamingProfile: Identifiable, Equatable, Sendable {
   let id: PlayerIdentifier
   let gamerTag: String
@@ -38,6 +45,7 @@ nonisolated struct GamingProfile: Identifiable, Equatable, Sendable {
   let availability: WeeklyPlayWindow
   let usesVoiceChat: Bool
 
+  /// Trims and validates the name while keeping the supplied player ID.
   init(id: PlayerIdentifier, draft: GamingProfileDraft) throws(GamingProfileValidationError) {
     let name = draft.gamerTag.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !name.isEmpty else { throw .missingPlayerName }
@@ -53,6 +61,7 @@ nonisolated struct GamingProfile: Identifiable, Equatable, Sendable {
     usesVoiceChat = draft.usesVoiceChat
   }
 
+  /// Compares server and player name, ignoring letter case.
   func hasSameLocalIdentity(as other: GamingProfile) -> Bool {
     server == other.server
       && gamerTag.folding(options: .caseInsensitive, locale: Locale(identifier: "en_US_POSIX"))
@@ -61,6 +70,7 @@ nonisolated struct GamingProfile: Identifiable, Equatable, Sendable {
   }
 }
 
+/// Player-name errors with correction guidance.
 nonisolated enum GamingProfileValidationError: LocalizedError, Equatable, Sendable {
   case missingPlayerName
   case playerNameTooLong

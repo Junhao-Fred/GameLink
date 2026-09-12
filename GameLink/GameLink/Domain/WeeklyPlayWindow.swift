@@ -1,5 +1,6 @@
 import Foundation
 
+/// A recurring weekday, rather than a specific date.
 nonisolated enum PlayDay: String, CaseIterable, Sendable {
   case monday = "Monday"
   case tuesday = "Tuesday"
@@ -10,11 +11,14 @@ nonisolated enum PlayDay: String, CaseIterable, Sendable {
   case sunday = "Sunday"
 }
 
+/// A weekly 30...180-minute window within one Sydney day.
+/// It may end at midnight but cannot cross into the next day.
 nonisolated struct WeeklyPlayWindow: Equatable, Sendable {
   static let timeZoneIdentifier = "Australia/Sydney"
   static let minimumSharedMinutes = 30
 
   let day: PlayDay
+  /// Minutes after midnight in Sydney, regardless of the device time zone.
   let startMinute: Int
   let durationMinutes: Int
 
@@ -29,15 +33,18 @@ nonisolated struct WeeklyPlayWindow: Equatable, Sendable {
     self.durationMinutes = durationMinutes
   }
 
+  /// Whether this window covers the whole session on the same weekday.
   func contains(_ session: WeeklyPlayWindow) -> Bool {
     day == session.day && startMinute <= session.startMinute && endMinute >= session.endMinute
   }
 
+  /// Returns shared minutes, or zero when the days or times do not overlap.
   func sharedMinutes(with other: WeeklyPlayWindow) -> Int {
     guard day == other.day else { return 0 }
     return max(0, min(endMinute, other.endMinute) - max(startMinute, other.startMinute))
   }
 
+  /// Returns the shared window only when it lasts at least 30 minutes.
   func sharedWindow(with other: WeeklyPlayWindow) -> WeeklyPlayWindow? {
     let minutes = sharedMinutes(with: other)
     guard minutes >= Self.minimumSharedMinutes else { return nil }
@@ -61,6 +68,7 @@ nonisolated struct WeeklyPlayWindow: Equatable, Sendable {
   }
 }
 
+/// Time errors with guidance for choosing a valid window.
 nonisolated enum PlayWindowError: LocalizedError, Equatable, Sendable {
   case invalidStartTime
   case invalidDuration

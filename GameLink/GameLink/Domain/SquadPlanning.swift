@@ -1,47 +1,48 @@
 import Foundation
 
+/// A teammate saved after the organiser confirms permission.
+/// Each add or edit needs fresh permission; duplicate profiles are rejected.
 nonisolated struct TeammateContact: Identifiable, Equatable, Sendable {
   let profile: GamingProfile
   var id: PlayerIdentifier { profile.id }
 }
 
+/// The requested session time, position and voice preference.
+/// The whole session must fit the organiser's availability; required voice chat must suit both players.
 nonisolated struct SquadPlan: Equatable, Sendable {
   let playWindow: WeeklyPlayWindow
   let neededRole: PreferredRole
   let requiresVoiceChat: Bool
 
-  func match(for contact: TeammateContact, organiser: GamingProfile) -> TeammateMatch? {
-    let teammate = contact.profile
-    guard teammate.id != organiser.id,
-      !teammate.hasSameLocalIdentity(as: organiser),
-      teammate.server == organiser.server,
-      teammate.preferredRole == neededRole,
-      !requiresVoiceChat || teammate.usesVoiceChat,
-      let sharedWindow = playWindow.sharedWindow(with: teammate.availability)
-    else { return nil }
-    return TeammateMatch(teammate: teammate, sharedWindow: sharedWindow)
-  }
 }
 
+/// A compatible teammate and at least 30 shared minutes.
+/// Server and position must match; shared time may be shorter than the planned session.
 nonisolated struct TeammateMatch: Identifiable, Equatable, Sendable {
   let teammate: GamingProfile
   let sharedWindow: WeeklyPlayWindow
   var id: PlayerIdentifier { teammate.id }
 }
 
+/// The organiser, plan and ranked matches from one search.
+/// Excludes avoided players; sorts by shared minutes, then name and ID.
+/// Profile changes require a new search before preparing a proposal.
 nonisolated struct SquadSearch: Equatable, Sendable {
   let organiser: GamingProfile
   let plan: SquadPlan
   let matches: [TeammateMatch]
 }
 
-nonisolated struct SquadProposal: Identifiable, Equatable, Sendable {
-  let id: UUID
+/// An unconfirmed session suggestion for two players.
+/// Rechecks saved details and includes only their shared time.
+/// Players confirm the date in chat; sharing does not prove delivery or acceptance.
+nonisolated struct SquadProposal: Equatable, Sendable {
   let organiser: GamingProfile
   let teammate: GamingProfile
   let sharedWindow: WeeklyPlayWindow
   let requiresVoiceChat: Bool
 
+  /// Share text without internal IDs or private exclusions.
   var shareText: String {
     """
     GameLink session proposal - not confirmed
