@@ -6,7 +6,6 @@ struct WeeklyPlayWindowFields: View {
   @Binding var startTime: Date
   @Binding var durationMinutes: Int
   let title: String
-  let summary: String?
   let dayFailure: String?
   let windowFailure: String?
 
@@ -35,13 +34,6 @@ struct WeeklyPlayWindowFields: View {
       }
     } header: {
       Text(title)
-    } footer: {
-      VStack(alignment: .leading, spacing: 8) {
-        Text(
-          "Sydney time (Australia/Sydney), regardless of your device time zone. Choose 30–180 minutes within one day."
-        )
-        if let summary { Text(summary) }
-      }
     }
   }
 }

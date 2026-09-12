@@ -13,7 +13,7 @@ struct GamingProfileFields: View {
       playerNameFocus: playerNameFocus)
     WeeklyPlayWindowFields(
       day: $form.playDay, startTime: $form.startTime, durationMinutes: $form.durationMinutes,
-      title: "Weekly availability", summary: form.availabilitySummary,
+      title: "Weekly availability",
       dayFailure: failureField == .playDay ? failureMessage : nil,
       windowFailure: failureField == .availability ? failureMessage : nil)
   }
@@ -60,8 +60,6 @@ private struct GamingProfileDetailsSection: View {
       Toggle("Uses voice chat", isOn: $form.usesVoiceChat)
     } header: {
       Text("League of Legends")
-    } footer: {
-      Text("Use the name, server and position this player shares with teammates.")
     }
   }
 }

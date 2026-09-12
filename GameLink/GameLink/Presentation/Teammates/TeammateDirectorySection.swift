@@ -44,13 +44,8 @@ struct TeammateDirectorySection: View {
       } header: {
         Text("Teammates")
       } footer: {
-        VStack(alignment: .leading, spacing: 8) {
-          if !canManageTeammates && viewModel.loadState == .ready {
-            Text("Save your profile changes before managing teammates.")
-          }
-          Text(
-            "Save details only with your teammate's permission. No live player directory is connected."
-          )
+        if !canManageTeammates && viewModel.loadState == .ready {
+          Text("Save your profile changes before managing teammates.")
         }
       }
     }

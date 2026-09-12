@@ -54,8 +54,6 @@ private struct SessionPlanFields: View {
             .frame(minHeight: 44)
         } header: {
           Text("Your saved availability")
-        } footer: {
-          Text("The whole session must fit inside this window.")
         }
       }
       Section {
@@ -78,13 +76,11 @@ private struct SessionPlanFields: View {
         }
       } header: {
         Text("Teammate requirements")
-      } footer: {
-        Text("Voice chat can only be required when your saved profile supports it.")
       }
       WeeklyPlayWindowFields(
         day: $viewModel.form.playDay, startTime: $viewModel.form.startTime,
         durationMinutes: $viewModel.form.durationMinutes,
-        title: "Session time", summary: viewModel.form.playWindowSummary,
+        title: "Session time",
         dayFailure: viewModel.searchFailure?.message(for: .playDay),
         windowFailure: viewModel.searchFailure?.message(for: .playWindow))
       Section {
@@ -98,10 +94,6 @@ private struct SessionPlanFields: View {
         if let failure = viewModel.searchFailure, failure.field == nil {
           Text(failure.localizedDescription).font(.callout)
         }
-      } footer: {
-        Text(
-          "Searches only teammates saved on this device. At least 30 shared minutes are required; this is not a confirmed game or booking."
-        )
       }
     }
   }

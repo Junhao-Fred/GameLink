@@ -4,6 +4,8 @@ import SwiftUI
 struct GamingProfileView: View {
   @Bindable var viewModel: GamingProfileViewModel
   @Bindable var teammateDirectory: TeammateDirectoryViewModel
+  var account: AccountViewModel? = nil
+  var leaveLocalMode: () -> Void = {}
   @FocusState private var isPlayerNameFocused: Bool
 
   var body: some View {
@@ -12,8 +14,13 @@ struct GamingProfileView: View {
       case .awaitingLoad:
         ProgressView("Opening your profile…")
       case .unavailable(let failure):
-        GamingProfileUnavailableView(
-          message: failure.localizedDescription, retry: viewModel.loadIfNeeded)
+        List {
+          GamingProfileUnavailableView(
+            message: failure.localizedDescription, retry: viewModel.loadIfNeeded)
+          if let account {
+            AccountSettingsSection(model: account, leaveLocalMode: leaveLocalMode)
+          }
+        }
       case .ready:
         Form {
           GamingProfileFields(
@@ -34,11 +41,12 @@ struct GamingProfileView: View {
               Text("Unsaved changes")
                 .font(.callout)
             }
-          } footer: {
-            Text("Your profile stays on this device. It is not published or sent to other players.")
           }
           TeammateDirectorySection(
             viewModel: teammateDirectory, canManageTeammates: viewModel.canManageTeammates)
+          if let account {
+            AccountSettingsSection(model: account, leaveLocalMode: leaveLocalMode)
+          }
         }
         .scrollDismissesKeyboard(.interactively)
         .confirmationDialog(

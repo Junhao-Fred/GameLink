@@ -12,15 +12,25 @@ final class LocalSquadNotebookRepository: SquadNotebookRepository {
   }
 
   /// Finds the notebook in the app's Application Support folder.
-  static func applicationSupport() throws(SquadNotebookAccessError) -> LocalSquadNotebookRepository
+  static func applicationSupport(accountID: UUID? = nil) throws(SquadNotebookAccessError)
+    -> LocalSquadNotebookRepository
   {
     do {
       let directory = try FileManager.default.url(
         for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
       return try LocalSquadNotebookRepository(
-        fileURL: directory.appending(path: "GameLink", directoryHint: .isDirectory)
-          .appending(path: "squad-notebook.json", directoryHint: .notDirectory))
+        fileURL: notebookURL(in: directory, accountID: accountID))
     } catch { throw .notebookLocationUnavailable }
+  }
+
+  /// Keeps guest data and each account's notebook in separate directories.
+  static func notebookURL(in directory: URL, accountID: UUID?) -> URL {
+    var folder = directory.appending(path: "GameLink", directoryHint: .isDirectory)
+    if let accountID {
+      folder = folder.appending(path: "Accounts", directoryHint: .isDirectory)
+        .appending(path: accountID.uuidString, directoryHint: .isDirectory)
+    }
+    return folder.appending(path: "squad-notebook.json", directoryHint: .notDirectory)
   }
 
   /// Loads saved details; a missing file is empty only if this repository has never seen saved data.

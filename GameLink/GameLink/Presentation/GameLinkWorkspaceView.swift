@@ -5,6 +5,8 @@ struct GameLinkWorkspaceView: View {
   let profile: GamingProfileViewModel
   let teammateDirectory: TeammateDirectoryViewModel
   @Bindable var sessionPlan: SessionPlanViewModel
+  var account: AccountViewModel? = nil
+  var leaveLocalMode: () -> Void = {}
   @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
@@ -51,7 +53,9 @@ struct GameLinkWorkspaceView: View {
       }
       Tab("Profile", systemImage: "person.crop.circle", value: .profile) {
         NavigationStack {
-          GamingProfileView(viewModel: profile, teammateDirectory: teammateDirectory)
+          GamingProfileView(
+            viewModel: profile, teammateDirectory: teammateDirectory,
+            account: account, leaveLocalMode: leaveLocalMode)
         }
       }
     }
