@@ -1,10 +1,12 @@
 import SwiftUI
 
+/// Shows compatible saved teammates and recovery actions when matching cannot proceed.
 struct TeammateResultsView: View {
   let viewModel: TeammateResultsViewModel
   let openProfile: () -> Void
+  let openPlan: () -> Void
+  let refreshResults: () -> Void
   let openTeammate: (PlayerIdentifier) -> Void
-  @Environment(\.dismiss) private var dismiss
 
   var body: some View {
     List {
@@ -25,7 +27,7 @@ struct TeammateResultsView: View {
             Text(
               "None of your saved teammates meet this server, position, voice preference and at least 30 shared minutes. Avoided teammates are excluded."
             )
-            Button("Review session plan") { dismiss() }
+            Button("Review session plan", action: openPlan)
               .frame(minHeight: 44)
             Button("Manage teammates in Profile", action: openProfile)
               .frame(minHeight: 44)
@@ -59,9 +61,9 @@ struct TeammateResultsView: View {
         Section {
           Text("Results unavailable").font(.headline)
           Text(failure.localizedDescription)
-          Button("Try again") { viewModel.refresh() }
+          Button("Try again", action: refreshResults)
             .frame(minHeight: 44)
-          Button("Review session plan") { dismiss() }
+          Button("Review session plan", action: openPlan)
             .frame(minHeight: 44)
           Button("Review profile", action: openProfile)
             .frame(minHeight: 44)
@@ -70,7 +72,7 @@ struct TeammateResultsView: View {
         Section {
           Text("Finish your profile changes").font(.headline)
           Text(
-            "Save your edits in Profile before using these results. Returning to Find will check your saved details again."
+            "Save your edits in Profile before using these results. Returning to Matches will check your saved details again."
           )
           Button("Review profile", action: openProfile)
             .frame(minHeight: 44)
@@ -80,11 +82,11 @@ struct TeammateResultsView: View {
     .navigationTitle("Teammate results")
     .toolbar {
       ToolbarItem(placement: .primaryAction) {
-        Button("Refresh results", systemImage: "arrow.clockwise") { viewModel.refresh() }
+        Button("Refresh results", systemImage: "arrow.clockwise", action: refreshResults)
           .accessibilityIdentifier("refreshTeammateResults")
       }
     }
-    .task { viewModel.refresh() }
+    .task { refreshResults() }
   }
 }
 

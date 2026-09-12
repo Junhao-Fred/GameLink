@@ -13,7 +13,7 @@ struct SessionPlanPresentationTests {
     planner.search()
     #expect(planner.loadState == .ownProfileRequired)
     #expect(planner.results == nil)
-    #expect(planner.path.isEmpty)
+    #expect(planner.selectedTab == .plan)
     #expect(repository.successfulSaveCount == 0)
   }
 
@@ -22,7 +22,7 @@ struct SessionPlanPresentationTests {
     repository.failsToLoad = true
     let planner = makePlanner(repository)
     planner.refreshProfile(hasUnsavedProfileChanges: false)
-    #expect(planner.loadState == .unavailable(.profileUnavailable))
+    #expect(planner.loadState == .unavailable(.notebookUnavailable))
     #expect(!planner.canSearch)
     repository.failsToLoad = false
     planner.refreshProfile(hasUnsavedProfileChanges: false)
@@ -30,7 +30,7 @@ struct SessionPlanPresentationTests {
     #expect(planner.canSearch)
   }
 
-  @Test func revisitingFindKeepsThePlayersChosenConditions() throws {
+  @Test func revisitingPlanKeepsThePlayersChosenConditions() throws {
     let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let planner = makePlanner(repository)
     planner.refreshProfile(hasUnsavedProfileChanges: false)
@@ -72,7 +72,7 @@ struct SessionPlanPresentationTests {
     let expected = try FindCompatibleTeammatesUseCase(repository: repository).execute(
       planner.form.makePlan())
     #expect(results.state == .available(expected))
-    #expect(planner.path == [.results])
+    #expect(planner.selectedTab == .matches)
     #expect(planner.searchFailure == nil)
     #expect(repository.notebook == original)
     #expect(repository.successfulSaveCount == 0)
@@ -103,7 +103,7 @@ struct SessionPlanPresentationTests {
     #expect(planner.searchFailure == .search(.outsideOwnAvailability))
     #expect(planner.searchFailure?.field == .playWindow)
     #expect(planner.form == draft)
-    #expect(planner.path.isEmpty)
+    #expect(planner.selectedTab == .plan)
     planner.form.playDay = .friday
     #expect(planner.searchFailure == nil)
   }
@@ -145,30 +145,29 @@ struct SessionPlanPresentationTests {
     repository.failsToLoad = true
     planner.search()
     #expect(planner.results == nil)
-    #expect(planner.path.isEmpty)
+    #expect(planner.selectedTab == .plan)
     #expect(planner.searchFailure == .search(.notebookUnavailable))
     repository.failsToLoad = false
     planner.search()
     #expect(planner.results != nil)
   }
 
-  @Test func editingSessionConditionsInvalidatesResultsButBackNavigationKeepsTheDraft() throws {
+  @Test func editingSessionConditionsInvalidatesResultsButRevisitingPlanKeepsTheDraft() throws {
     let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let planner = makePlanner(repository)
     planner.refreshProfile(hasUnsavedProfileChanges: false)
     planner.form.neededRole = .support
     let draft = planner.form
     planner.search()
-    planner.path = []
+    planner.selectedTab = .plan
     #expect(planner.form == draft)
     planner.form.neededRole = .jungle
     #expect(planner.results == nil)
-    #expect(planner.path.isEmpty)
+    #expect(planner.selectedTab == .plan)
   }
 
   private func makePlanner(_ repository: TestSquadNotebookRepository) -> SessionPlanViewModel {
     SessionPlanViewModel(
-      loadProfile: LoadGamingProfileUseCase(repository: repository),
       findTeammates: FindCompatibleTeammatesUseCase(repository: repository),
       prepareProposal: PrepareSquadProposalUseCase(repository: repository))
   }

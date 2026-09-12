@@ -5,45 +5,38 @@ import Testing
 @MainActor
 struct TeammateDirectoryPresentationTests {
   private func directory(_ repository: any SquadNotebookRepository) -> TeammateDirectoryViewModel {
-    TeammateDirectoryViewModel(
-      loadDirectory: LoadTeammateDirectoryUseCase(repository: repository),
-      saveContact: SaveTeammateContactUseCase(repository: repository),
-      setAvoidance: SetTeammateAvoidanceUseCase(repository: repository))
+    TeammateDirectoryViewModel(saveContact: SaveTeammateContactUseCase(repository: repository))
   }
 
-  @Test func addingTeammatesIsBlockedBeforeTheSavedDirectoryHasBeenChecked() throws {
+  @Test func addingRequiresAReadableSavedDirectory() throws {
     let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let model = directory(repository)
     model.beginAddingTeammate()
     #expect(model.editor == nil)
     model.reload()
     model.beginAddingTeammate()
-    #expect(model.editor?.contactID == nil)
     #expect(model.editor != nil)
     #expect(repository.successfulSaveCount == 0)
   }
 
-  @Test func anUnavailableDirectoryBlocksChangesAndCanBeRetried() throws {
-    let notebook = try SquadFixtures.notebook()
-    let repository = TestSquadNotebookRepository(notebook: notebook)
+  @Test func unreadableContactsBlockEditingAndSupportRetry() throws {
+    let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let model = directory(repository)
     model.reload()
     let entry = try #require(model.entries.first)
     repository.failsToLoad = true
     model.reload()
-    #expect(model.loadState == .unavailable(.directoryUnavailable))
+    #expect(model.loadState == .unavailable(.notebookUnavailable))
     model.beginAddingTeammate()
     model.beginEditingTeammate(entry)
-    model.changeAvoidance(for: entry)
     #expect(model.editor == nil)
-    #expect(repository.successfulSaveCount == 0)
     repository.failsToLoad = false
     model.reload()
     #expect(model.loadState == .ready)
-    #expect(model.entries.map(\.contact) == notebook.contacts)
+    #expect(repository.successfulSaveCount == 0)
   }
 
-  @Test func savingAnEditorThenReloadingShowsTheNewTeammate() throws {
+  @Test func savingTheInlineEditorClosesItAndRefreshesTheDirectory() throws {
     let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let model = directory(repository)
     model.reload()
@@ -51,92 +44,108 @@ struct TeammateDirectoryPresentationTests {
     let editor = try #require(model.editor)
     editor.form = GamingProfileForm(profile: try SquadFixtures.profile(name: "Jordan"))
     editor.permissionConfirmed = true
-    #expect(editor.save())
-    model.editor = nil
-    model.reload()
+    model.saveEditor()
+    #expect(model.editor == nil)
     #expect(model.entries.map { $0.contact.profile.gamerTag } == ["Miko", "Jordan"])
+    #expect(model.saveConfirmation == "Teammate saved on this device.")
+    #expect(repository.successfulSaveCount == 1)
   }
 
-  @Test func avoidingAndRestoringATeammateChangesSearchEligibilityWithoutRemovingTheirRow() throws {
+  @Test func aSecondContactCannotReplaceAnUnfinishedInlineDraft() throws {
     let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let model = directory(repository)
     model.reload()
-    let entry = try #require(model.entries.first)
-    model.changeAvoidance(for: entry)
-    #expect(model.entries.count == 1)
-    #expect(model.entries.first?.isAvoided == true)
-    #expect(
-      try FindCompatibleTeammatesUseCase(repository: repository).execute(SquadFixtures.plan())
-        .matches.isEmpty)
-    let avoidedEntry = try #require(model.entries.first)
-    model.changeAvoidance(for: avoidedEntry)
-    #expect(model.entries.first?.isAvoided == false)
-    #expect(
-      try FindCompatibleTeammatesUseCase(repository: repository).execute(SquadFixtures.plan())
-        .matches.map(\.id) == [entry.id])
+    model.beginAddingTeammate()
+    let original = try #require(model.editor)
+    original.form.gamerTag = "Unfinished teammate"
+    model.beginAddingTeammate()
+    model.beginEditingTeammate(try #require(model.entries.first))
+    model.reload()
+    #expect(model.editor === original)
+    #expect(original.form.gamerTag == "Unfinished teammate")
+    #expect(repository.successfulSaveCount == 0)
   }
 
-  @Test func failedAvoidanceKeepsTheVisiblePreferenceAndSupportsRetry() throws {
-    let notebook = try SquadFixtures.notebook()
-    let repository = TestSquadNotebookRepository(notebook: notebook)
+  @Test func cancellingAnEditedTeammateRequiresConfirmationAndNeverWrites() throws {
+    let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let model = directory(repository)
     model.reload()
-    let entry = try #require(model.entries.first)
-    repository.failsToSave = true
-    model.changeAvoidance(for: entry)
-    #expect(model.entries.first?.isAvoided == false)
-    #expect(model.avoidanceFailure == .preferenceNotSaved)
-    #expect(model.showsAvoidanceFailure)
-    #expect(model.preferenceConfirmation == nil)
-    #expect(repository.notebook == notebook)
-    repository.failsToSave = false
-    model.changeAvoidance(for: entry)
-    #expect(model.entries.first?.isAvoided == true)
-    #expect(model.avoidanceFailure == nil)
-    #expect(!model.showsAvoidanceFailure)
+    model.beginEditingTeammate(try #require(model.entries.first))
+    let original = try #require(model.editor)
+    original.form.gamerTag = "Changed draft"
+    model.requestCancelEditing()
+    #expect(model.showsDiscardConfirmation)
+    #expect(model.editor === original)
+    model.showsDiscardConfirmation = false
+    #expect(model.editor === original)
+    model.requestCancelEditing()
+    model.discardEditor()
+    #expect(model.editor == nil)
+    #expect(!model.showsDiscardConfirmation)
+    #expect(repository.notebook.contacts.first?.profile.gamerTag == "Miko")
+    #expect(repository.successfulSaveCount == 0)
   }
 
-  @Test func reopenedDirectoryPreservesEditedTeammatesAndAvoidanceOnDisk() throws {
-    let sandbox = try SquadStorageSandbox()
-    defer { sandbox.remove() }
-    let repository = try LocalSquadNotebookRepository(fileURL: sandbox.fileURL)
-    _ = try SaveGamingProfileUseCase(repository: repository).execute(SquadFixtures.draft())
+  @Test func cancellingAnUntouchedDraftDoesNotRequireConfirmation() throws {
+    let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
+    let model = directory(repository)
+    model.reload()
+    model.beginAddingTeammate()
+    model.requestCancelEditing()
+    #expect(model.editor == nil)
+    #expect(!model.showsDiscardConfirmation)
+    #expect(repository.successfulSaveCount == 0)
+  }
+
+  @Test func aFailedInlineSaveKeepsPermissionAndDraftForRetry() throws {
+    let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let model = directory(repository)
     model.reload()
     model.beginAddingTeammate()
     let editor = try #require(model.editor)
-    editor.form = GamingProfileForm(
-      profile: try SquadFixtures.profile(name: "Jordan", start: 1147, duration: 37))
+    editor.form = GamingProfileForm(profile: try SquadFixtures.profile(name: "Jordan"))
     editor.permissionConfirmed = true
-    #expect(editor.save())
-    model.editor = nil
+    repository.failsToSave = true
+    model.saveEditor()
+    #expect(model.editor === editor)
+    #expect(editor.saveFailure == .contact(.contactNotSaved))
+    #expect(editor.permissionConfirmed)
+    #expect(model.saveConfirmation == nil)
+    repository.failsToSave = false
+    model.saveEditor()
+    #expect(model.editor == nil)
+    #expect(repository.successfulSaveCount == 1)
+  }
+
+  @Test func reopeningAndEditingALegacyExcludedContactPreservesItsIdentityAndExclusion() throws {
+    let sandbox = try SquadStorageSandbox()
+    defer { sandbox.remove() }
+    let repository = try LocalSquadNotebookRepository(fileURL: sandbox.fileURL)
+    var notebook = try SquadFixtures.notebook()
+    let contact = try #require(notebook.contacts.first)
+    notebook.avoidedPlayerIDs = [contact.id]
+    try repository.saveNotebook(notebook)
+    let model = directory(try LocalSquadNotebookRepository(fileURL: sandbox.fileURL))
     model.reload()
-    model.changeAvoidance(for: try #require(model.entries.first))
-
-    let reopened = directory(try LocalSquadNotebookRepository(fileURL: sandbox.fileURL))
-    reopened.reload()
-    let savedEntry = try #require(reopened.entries.first)
-    #expect(savedEntry.isAvoided)
-    #expect(savedEntry.contact.profile.availability.startMinute == 1147)
-    reopened.beginEditingTeammate(savedEntry)
-    let editing = try #require(reopened.editor)
-    editing.form.gamerTag = "Jordan Updated"
-    editing.permissionConfirmed = true
-    #expect(editing.save())
-
-    let finalRepository = try LocalSquadNotebookRepository(fileURL: sandbox.fileURL)
-    let finalEntry = try #require(
-      LoadTeammateDirectoryUseCase(repository: finalRepository).execute().first)
-    #expect(finalEntry.id == savedEntry.id)
-    #expect(finalEntry.contact.profile.gamerTag == "Jordan Updated")
-    #expect(finalEntry.contact.profile.availability.durationMinutes == 37)
-    #expect(finalEntry.isAvoided)
+    let entry = try #require(model.entries.first)
+    #expect(entry.isAvoided)
+    model.beginEditingTeammate(entry)
+    let editor = try #require(model.editor)
+    editor.form.gamerTag = "Miko Updated"
+    editor.permissionConfirmed = true
+    model.saveEditor()
+    let reopened = try LocalSquadNotebookRepository(fileURL: sandbox.fileURL).loadNotebook()
+    #expect(reopened.contacts.first?.id == contact.id)
+    #expect(reopened.contacts.first?.profile.gamerTag == "Miko Updated")
+    #expect(reopened.avoidedPlayerIDs == [contact.id])
+    #expect(
+      try FindCompatibleTeammatesUseCase(repository: repository).execute(SquadFixtures.plan())
+        .matches.isEmpty)
   }
 
   @Test func managingTeammatesRequiresTheOrganisersProfileEditsToBeSaved() throws {
     let repository = TestSquadNotebookRepository()
     let profile = GamingProfileViewModel(
-      loadProfile: LoadGamingProfileUseCase(repository: repository),
       saveProfile: SaveGamingProfileUseCase(repository: repository))
     profile.loadIfNeeded()
     #expect(!profile.canManageTeammates)

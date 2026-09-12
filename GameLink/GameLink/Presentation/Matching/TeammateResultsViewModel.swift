@@ -1,11 +1,11 @@
 import Observation
 
+/// Presents current matches for one plan, keeping empty results distinct from read failures.
 @MainActor
 @Observable
 final class TeammateResultsViewModel {
   let plan: SquadPlan
   private(set) var state: TeammateResultsState
-  private var hasUnsavedProfileChanges = false
   private let findTeammates: FindCompatibleTeammatesUseCase
 
   init(search: SquadSearch, findTeammates: FindCompatibleTeammatesUseCase) {
@@ -14,12 +14,8 @@ final class TeammateResultsViewModel {
     self.findTeammates = findTeammates
   }
 
+  /// Reruns matching against saved details, or hides results while profile edits are unsaved.
   func refresh(hasUnsavedProfileChanges: Bool) {
-    self.hasUnsavedProfileChanges = hasUnsavedProfileChanges
-    refresh()
-  }
-
-  func refresh() {
     guard !hasUnsavedProfileChanges else {
       state = .unsavedProfileChanges
       return

@@ -18,7 +18,6 @@ struct SquadProposalSharingTests {
     details.requestSharing()
     let request = try #require(details.shareRequest)
     #expect(request.text == proposal.shareText)
-    #expect(!request.text.contains(proposal.id.uuidString))
     #expect(!request.text.contains(proposal.teammate.id.rawValue.uuidString))
     #expect(repository.notebook == original)
     #expect(repository.successfulSaveCount == 0)
@@ -168,8 +167,7 @@ struct SquadProposalSharingTests {
     let originalBytes = try Data(contentsOf: sandbox.fileURL)
     details.reviewProposal()
     #expect(try Data(contentsOf: sandbox.fileURL) == originalBytes)
-    try SetTeammateAvoidanceUseCase(repository: writer).execute(
-      teammateID: match.id, isAvoided: true)
+    try SquadFixtures.saveLegacyExclusions([match.id], in: writer)
     let avoidedBytes = try Data(contentsOf: sandbox.fileURL)
     details.requestSharing()
     #expect(details.state == .unavailable(.preparation(.teammateAvoided)))

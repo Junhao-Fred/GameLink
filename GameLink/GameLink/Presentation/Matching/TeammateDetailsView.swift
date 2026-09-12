@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Displays a teammate, shared time and inline proposal review on the Details page.
 struct TeammateDetailsView: View {
   @Bindable var viewModel: TeammateDetailsViewModel
   let openProfile: () -> Void
@@ -13,17 +14,21 @@ struct TeammateDetailsView: View {
       case .available(let proposal):
         SavedTeammateSection(profile: proposal.teammate)
         SharedSessionSection(plan: viewModel.plan, proposal: proposal)
-        Section {
-          Button(action: viewModel.reviewProposal) {
-            Text("Review proposal")
-              .frame(maxWidth: .infinity, minHeight: 44)
+        if let reviewedProposal = viewModel.proposalPreview {
+          SquadProposalPreviewSection(viewModel: viewModel, proposal: reviewedProposal)
+        } else {
+          Section {
+            Button(action: viewModel.reviewProposal) {
+              Text("Review proposal")
+                .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("reviewSquadProposal")
+          } footer: {
+            Text(
+              "Review the exact message before choosing where to share it. No invitation is sent automatically."
+            )
           }
-          .buttonStyle(.borderedProminent)
-          .accessibilityIdentifier("reviewSquadProposal")
-        } footer: {
-          Text(
-            "Review the exact message before choosing where to share it. No invitation is sent automatically."
-          )
         }
       case .unavailable(let failure):
         Section {
@@ -41,8 +46,8 @@ struct TeammateDetailsView: View {
     .navigationTitle("Teammate details")
     .navigationBarTitleDisplayMode(.inline)
     .task { viewModel.refresh() }
-    .sheet(item: $viewModel.proposalPreview) { proposal in
-      SquadProposalPreviewView(viewModel: viewModel, proposal: proposal)
+    .sheet(item: $viewModel.shareRequest) { request in
+      SquadProposalActivityView(request: request, completion: viewModel.completeSharing)
     }
   }
 }

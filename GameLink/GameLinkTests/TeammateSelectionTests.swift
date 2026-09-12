@@ -5,7 +5,7 @@ import Testing
 @Suite("Moving from teammate results to proposal review")
 @MainActor
 struct TeammateSelectionTests {
-  @Test func selectingAMatchOpensDetailsAndBackNavigationKeepsThePlan() throws {
+  @Test func selectingAMatchOpensDetailsAndReturningToMatchesKeepsThePlan() throws {
     let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let planner = makePlanner(repository)
     planner.refreshProfile(hasUnsavedProfileChanges: false)
@@ -14,11 +14,11 @@ struct TeammateSelectionTests {
     let draft = planner.form
     let contact = try #require(repository.notebook.contacts.first)
     planner.openTeammate(contact.id)
-    #expect(planner.path == [.results, .teammateDetails])
+    #expect(planner.selectedTab == .details)
     let details = try #require(planner.selectedTeammate)
     details.reviewProposal()
     #expect(details.proposalPreview?.teammate.id == contact.id)
-    planner.path = [.results]
+    planner.returnToResults()
     #expect(planner.selectedTeammate == nil)
     #expect(planner.form == draft)
     #expect(planner.results != nil)
@@ -37,7 +37,7 @@ struct TeammateSelectionTests {
     planner.refreshProfile(hasUnsavedProfileChanges: true)
     planner.openTeammate(contact.id)
     #expect(planner.selectedTeammate == nil)
-    #expect(planner.path == [.results])
+    #expect(planner.selectedTab == .matches)
   }
 
   @Test func returningFromProfileRechecksOpenDetailsAndRecoveryRefreshesResults() throws {
@@ -53,13 +53,12 @@ struct TeammateSelectionTests {
     planner.refreshProfile(hasUnsavedProfileChanges: true)
     #expect(details.state == .unavailable(.unsavedProfileChanges))
     #expect(details.proposalPreview == nil)
-    try SetTeammateAvoidanceUseCase(repository: repository).execute(
-      teammateID: contact.id, isAvoided: true)
+    try SquadFixtures.saveLegacyExclusions([contact.id], in: repository)
     planner.refreshProfile(hasUnsavedProfileChanges: false)
     #expect(details.state == .unavailable(.preparation(.teammateAvoided)))
     planner.returnToResults()
     #expect(planner.selectedTeammate == nil)
-    #expect(planner.path == [.results])
+    #expect(planner.selectedTab == .matches)
     guard case .available(let search) = planner.results?.state else {
       Issue.record("Returning to results should check the same plan again.")
       return
@@ -69,7 +68,6 @@ struct TeammateSelectionTests {
 
   private func makePlanner(_ repository: TestSquadNotebookRepository) -> SessionPlanViewModel {
     SessionPlanViewModel(
-      loadProfile: LoadGamingProfileUseCase(repository: repository),
       findTeammates: FindCompatibleTeammatesUseCase(repository: repository),
       prepareProposal: PrepareSquadProposalUseCase(repository: repository))
   }

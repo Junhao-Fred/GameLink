@@ -23,7 +23,7 @@ struct LocalSquadNotebookRepositoryTests {
 
   @Test func aNetworkLocationCannotBeUsedForThePrivateNotebook() throws {
     let location = try #require(URL(string: "https://example.invalid/squad-notebook.json"))
-    #expect(throws: SquadNotebookStorageError.notebookLocationUnavailable) {
+    #expect(throws: SquadNotebookAccessError.notebookLocationUnavailable) {
       try LocalSquadNotebookRepository(fileURL: location)
     }
   }
@@ -158,8 +158,8 @@ struct LocalSquadNotebookRepositoryTests {
     let notebook = try SquadFixtures.notebook()
     try repository.saveNotebook(notebook)
     try FileManager.default.removeItem(at: sandbox.fileURL)
-    #expect(throws: SquadNotebookStorageError.savedDetailsMissing) { try repository.loadNotebook() }
-    #expect(throws: SquadNotebookStorageError.savedDetailsMissing) {
+    #expect(throws: SquadNotebookAccessError.savedDetailsMissing) { try repository.loadNotebook() }
+    #expect(throws: SquadNotebookAccessError.savedDetailsMissing) {
       try repository.saveNotebook(notebook)
     }
     #expect(!FileManager.default.fileExists(atPath: sandbox.fileURL.path))
@@ -178,10 +178,10 @@ struct LocalSquadNotebookRepositoryTests {
       try? FileManager.default.setAttributes(
         [.posixPermissions: 0o600], ofItemAtPath: sandbox.fileURL.path)
     }
-    #expect(throws: SquadNotebookStorageError.savedDetailsUnreadable) {
+    #expect(throws: SquadNotebookAccessError.savedDetailsUnreadable) {
       try repository.loadNotebook()
     }
-    #expect(throws: SquadNotebookStorageError.savedDetailsUnreadable) {
+    #expect(throws: SquadNotebookAccessError.savedDetailsUnreadable) {
       try repository.saveNotebook(notebook)
     }
     try FileManager.default.setAttributes(
@@ -200,7 +200,7 @@ struct LocalSquadNotebookRepositoryTests {
     try FileManager.default.setAttributes(
       [.posixPermissions: 0o500], ofItemAtPath: sandbox.directoryURL.path)
     let draft = try SquadFixtures.draft(name: "UpdatedAlex")
-    #expect(throws: SaveGamingProfileError.profileNotSaved) {
+    #expect(throws: SaveGamingProfileError.notebookAccess(.changesNotSaved)) {
       try SaveGamingProfileUseCase(repository: repository).execute(draft)
     }
     #expect(try Data(contentsOf: sandbox.fileURL) == savedBytes)
@@ -220,7 +220,7 @@ struct LocalSquadNotebookRepositoryTests {
     let repository = try LocalSquadNotebookRepository(fileURL: sandbox.fileURL)
     try FileManager.default.setAttributes(
       [.posixPermissions: 0o500], ofItemAtPath: sandbox.directoryURL.path)
-    #expect(throws: SquadNotebookStorageError.changesNotSaved) {
+    #expect(throws: SquadNotebookAccessError.changesNotSaved) {
       try repository.saveNotebook(SquadFixtures.notebook())
     }
     #expect(!FileManager.default.fileExists(atPath: sandbox.fileURL.path))

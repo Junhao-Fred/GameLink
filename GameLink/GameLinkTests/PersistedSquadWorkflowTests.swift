@@ -6,7 +6,7 @@ import Testing
 @Suite("Using squad business operations after reopening local storage")
 @MainActor
 struct PersistedSquadWorkflowTests {
-  @Test func aSavedSquadCanBeMatchedProposedAvoidedAndRestoredAcrossReopens() throws {
+  @Test func theFourBusinessOperationsWorkAcrossStorageReopens() throws {
     let sandbox = try SquadStorageSandbox()
     defer { sandbox.remove() }
     let organiser = try SaveGamingProfileUseCase(
@@ -34,10 +34,8 @@ struct PersistedSquadWorkflowTests {
     #expect(proposal.shareText.contains("not confirmed"))
     #expect(try Data(contentsOf: sandbox.fileURL) == savedBeforeProposal)
 
-    try SetTeammateAvoidanceUseCase(
-      repository: LocalSquadNotebookRepository(fileURL: sandbox.fileURL)
-    )
-    .execute(teammateID: teammate.id, isAvoided: true)
+    try SquadFixtures.saveLegacyExclusions(
+      [teammate.id], in: LocalSquadNotebookRepository(fileURL: sandbox.fileURL))
     let avoidedSearch = try FindCompatibleTeammatesUseCase(
       repository: LocalSquadNotebookRepository(fileURL: sandbox.fileURL)
     ).execute(SquadFixtures.plan())
@@ -48,10 +46,8 @@ struct PersistedSquadWorkflowTests {
       )
       .execute(teammateID: teammate.id, from: search)
     }
-    try SetTeammateAvoidanceUseCase(
-      repository: LocalSquadNotebookRepository(fileURL: sandbox.fileURL)
-    )
-    .execute(teammateID: teammate.id, isAvoided: false)
+    try SquadFixtures.saveLegacyExclusions(
+      [], in: LocalSquadNotebookRepository(fileURL: sandbox.fileURL))
     let restoredSearch = try FindCompatibleTeammatesUseCase(
       repository: LocalSquadNotebookRepository(fileURL: sandbox.fileURL)
     ).execute(SquadFixtures.plan())

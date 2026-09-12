@@ -1,5 +1,6 @@
 import Foundation
 
+/// In-progress profile input, including choices the player has not yet completed.
 nonisolated struct GamingProfileForm: Equatable {
   var gamerTag: String
   var server: GameServer?
@@ -8,8 +9,6 @@ nonisolated struct GamingProfileForm: Equatable {
   var startMinute: Int
   var durationMinutes: Int
   var usesVoiceChat: Bool
-
-  static let clockCalendar = PlayWindowClock.calendar
 
   init(profile: GamingProfile? = nil) {
     gamerTag = profile?.gamerTag ?? ""
@@ -34,6 +33,7 @@ nonisolated struct GamingProfileForm: Equatable {
     return window.summary
   }
 
+  /// Requires a server, position, weekday and valid play window before creating a draft.
   func makeDraft() throws(GamingProfileFormError) -> GamingProfileDraft {
     guard let server else { throw .chooseServer }
     guard let preferredRole else { throw .chooseRole }

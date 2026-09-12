@@ -1,6 +1,8 @@
 import Foundation
 
-nonisolated enum SquadNotebookStorageError: LocalizedError, Equatable, Sendable {
+/// Reasons saved squad details cannot be used, with guidance that preserves the original notebook.
+/// Business operations carry these failures to players without exposing JSON or file-system errors.
+nonisolated enum SquadNotebookAccessError: LocalizedError, Equatable, Sendable {
   case notebookLocationUnavailable
   case savedDetailsUnreadable
   case savedDetailsInvalid

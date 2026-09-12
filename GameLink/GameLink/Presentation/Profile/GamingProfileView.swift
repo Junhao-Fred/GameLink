@@ -1,5 +1,6 @@
 import SwiftUI
 
+/// Lets the organiser maintain their profile and permission-based teammates on one page.
 struct GamingProfileView: View {
   @Bindable var viewModel: GamingProfileViewModel
   @Bindable var teammateDirectory: TeammateDirectoryViewModel
@@ -19,19 +20,10 @@ struct GamingProfileView: View {
             form: $viewModel.form,
             failureField: viewModel.saveFailure?.field,
             failureMessage: viewModel.saveFailure?.localizedDescription,
-            playerNameFocus: $isPlayerNameFocused)
+            playerNameFocus: $isPlayerNameFocused
+          )
+          .disabled(teammateDirectory.editor != nil)
           Section {
-            Button {
-              isPlayerNameFocused = false
-              viewModel.save()
-            } label: {
-              Text("Save profile")
-                .frame(maxWidth: .infinity, minHeight: 44)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(!viewModel.canSave)
-            .accessibilityIdentifier("saveProfile")
-
             if let failure = viewModel.saveFailure, failure.field == nil {
               Text(failure.localizedDescription)
                 .font(.callout)
@@ -49,20 +41,29 @@ struct GamingProfileView: View {
             viewModel: teammateDirectory, canManageTeammates: viewModel.canManageTeammates)
         }
         .scrollDismissesKeyboard(.interactively)
-        .sheet(item: $teammateDirectory.editor, onDismiss: teammateDirectory.reload) { editor in
-          TeammateContactEditorView(viewModel: editor)
-        }
-        .alert("Preference not saved", isPresented: $teammateDirectory.showsAvoidanceFailure) {
-          Button("Close", role: .cancel) {}
+        .confirmationDialog(
+          "Discard teammate changes?", isPresented: $teammateDirectory.showsDiscardConfirmation
+        ) {
+          Button("Discard changes", role: .destructive, action: teammateDirectory.discardEditor)
+          Button("Keep editing", role: .cancel) {}
         } message: {
-          if let failure = teammateDirectory.avoidanceFailure { Text(failure.localizedDescription) }
+          Text("Your unsaved edits will be lost. Saved teammate details will stay unchanged.")
         }
-        .onChange(of: teammateDirectory.preferenceConfirmation) { _, confirmation in
+        .onChange(of: teammateDirectory.saveConfirmation) { _, confirmation in
           if let confirmation { AccessibilityNotification.Announcement(confirmation).post() }
         }
       }
     }
     .navigationTitle("Profile")
+    .toolbar {
+      // Keep saving reachable while the form scrolls behind the floating tab bar.
+      ToolbarItem(placement: .confirmationAction) {
+        Button("Save", action: saveProfile)
+          .disabled(!viewModel.canSave || teammateDirectory.editor != nil)
+          .accessibilityLabel("Save profile")
+          .accessibilityIdentifier("saveProfile")
+      }
+    }
     .task { viewModel.loadIfNeeded() }
     .onChange(of: viewModel.savedProfile, initial: true) { teammateDirectory.reload() }
     .alert("Profile not saved", isPresented: $viewModel.showsSaveFailure) {
@@ -77,6 +78,11 @@ struct GamingProfileView: View {
         AccessibilityNotification.Announcement("Profile saved on this device.").post()
       }
     }
+  }
+
+  private func saveProfile() {
+    isPlayerNameFocused = false
+    viewModel.save()
   }
 }
 
@@ -111,12 +117,9 @@ struct GamingProfileUnavailableView: View {
     NavigationStack {
       GamingProfileView(
         viewModel: GamingProfileViewModel(
-          loadProfile: LoadGamingProfileUseCase(repository: repository),
           saveProfile: SaveGamingProfileUseCase(repository: repository)),
         teammateDirectory: TeammateDirectoryViewModel(
-          loadDirectory: LoadTeammateDirectoryUseCase(repository: repository),
-          saveContact: SaveTeammateContactUseCase(repository: repository),
-          setAvoidance: SetTeammateAvoidanceUseCase(repository: repository)))
+          saveContact: SaveTeammateContactUseCase(repository: repository)))
     }
   }
 #endif

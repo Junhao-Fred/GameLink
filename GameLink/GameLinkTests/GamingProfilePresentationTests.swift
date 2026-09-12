@@ -4,17 +4,19 @@ import Testing
 @testable import GameLink
 
 @MainActor
-struct LoadGamingProfileTests {
+struct SavedProfilePreparationTests {
   @Test func firstLaunchHasNoSavedPlayerProfile() throws {
     let repository = TestSquadNotebookRepository()
-    #expect(try LoadGamingProfileUseCase(repository: repository).execute() == nil)
+    #expect(try SaveGamingProfileUseCase(repository: repository).loadSavedProfile() == nil)
     #expect(repository.successfulSaveCount == 0)
   }
 
   @Test func savedPlayerProfileIsReturnedWithoutChangingSquadDetails() throws {
     let notebook = try SquadFixtures.notebook()
     let repository = TestSquadNotebookRepository(notebook: notebook)
-    #expect(try LoadGamingProfileUseCase(repository: repository).execute() == notebook.ownProfile)
+    #expect(
+      try SaveGamingProfileUseCase(repository: repository).loadSavedProfile() == notebook.ownProfile
+    )
     #expect(repository.notebook == notebook)
     #expect(repository.successfulSaveCount == 0)
   }
@@ -22,8 +24,8 @@ struct LoadGamingProfileTests {
   @Test func unreadableNotebookIsNotTreatedAsAnEmptyProfile() {
     let repository = TestSquadNotebookRepository()
     repository.failsToLoad = true
-    #expect(throws: LoadGamingProfileError.profileUnavailable) {
-      try LoadGamingProfileUseCase(repository: repository).execute()
+    #expect(throws: SaveGamingProfileError.notebookUnavailable) {
+      try SaveGamingProfileUseCase(repository: repository).loadSavedProfile()
     }
     #expect(repository.successfulSaveCount == 0)
   }
@@ -46,12 +48,12 @@ struct GamingProfileFormTests {
     var form = GamingProfileForm()
     form.startMinute = minute
     let selectedTime = form.startTime
-    #expect(GamingProfileForm.clockCalendar.component(.hour, from: selectedTime) == minute / 60)
-    #expect(GamingProfileForm.clockCalendar.component(.minute, from: selectedTime) == minute % 60)
+    #expect(PlayWindowClock.calendar.component(.hour, from: selectedTime) == minute / 60)
+    #expect(PlayWindowClock.calendar.component(.minute, from: selectedTime) == minute % 60)
     form.startMinute = 0
     form.startTime = selectedTime
     #expect(form.startMinute == minute)
-    #expect(GamingProfileForm.clockCalendar.timeZone.secondsFromGMT(for: selectedTime) == 0)
+    #expect(PlayWindowClock.calendar.timeZone.secondsFromGMT(for: selectedTime) == 0)
   }
 
   @Test func savedNonQuarterHourAvailabilityIsNotRoundedWhenEditing() throws {
@@ -76,7 +78,6 @@ struct GamingProfileFormTests {
 struct GamingProfileViewModelTests {
   private func viewModel(_ repository: any SquadNotebookRepository) -> GamingProfileViewModel {
     GamingProfileViewModel(
-      loadProfile: LoadGamingProfileUseCase(repository: repository),
       saveProfile: SaveGamingProfileUseCase(repository: repository))
   }
 
@@ -110,7 +111,7 @@ struct GamingProfileViewModelTests {
     repository.failsToLoad = true
     let model = viewModel(repository)
     model.loadIfNeeded()
-    #expect(model.loadState == .unavailable(.profileUnavailable))
+    #expect(model.loadState == .unavailable(.notebookUnavailable))
     #expect(!model.canSave)
     model.save()
     #expect(repository.successfulSaveCount == 0)
@@ -190,8 +191,9 @@ struct GamingProfileViewModelTests {
     model.loadIfNeeded()
     model.save()
     #expect(model.saveFailure == .form(.chooseServer))
-    #expect(model.saveFailure?.message(for: .server) != nil)
-    #expect(model.saveFailure?.message(for: .role) == nil)
+    #expect(model.saveFailure?.field == .server)
+    #expect(
+      model.saveFailure?.localizedDescription == "Choose the player's server before saving.")
     #expect(repository.successfulSaveCount == 0)
   }
 
@@ -255,7 +257,7 @@ struct GamingProfileViewModelTests {
     try originalBytes.write(to: sandbox.fileURL)
     let model = viewModel(try LocalSquadNotebookRepository(fileURL: sandbox.fileURL))
     model.loadIfNeeded()
-    #expect(model.loadState == .unavailable(.profileUnavailable))
+    #expect(model.loadState == .unavailable(.notebookAccess(.savedDetailsInvalid)))
     model.save()
     #expect(try Data(contentsOf: sandbox.fileURL) == originalBytes)
   }

@@ -3,14 +3,14 @@ import Testing
 @testable import GameLink
 
 @MainActor
-struct LoadTeammateDirectoryTests {
+struct SavedTeammatePreparationTests {
   @Test func savedTeammatesRetainTheirOrderAndPrivateAvoidanceStatus() throws {
     var notebook = try SquadFixtures.notebook()
     notebook.contacts.append(try SquadFixtures.contact(name: "Jordan"))
     notebook.avoidedPlayerIDs = [try #require(notebook.contacts.first).id]
     let repository = TestSquadNotebookRepository(notebook: notebook)
 
-    let entries = try LoadTeammateDirectoryUseCase(repository: repository).execute()
+    let entries = try SaveTeammateContactUseCase(repository: repository).loadSavedTeammates()
 
     #expect(entries.map(\.contact) == notebook.contacts)
     #expect(entries.map(\.isAvoided) == [true, false])
@@ -21,13 +21,13 @@ struct LoadTeammateDirectoryTests {
   @Test func aSavedOrganiserWithNoContactsHasAnEmptyDirectory() throws {
     let repository = TestSquadNotebookRepository(
       notebook: SquadNotebook(ownProfile: try SquadFixtures.profile()))
-    #expect(try LoadTeammateDirectoryUseCase(repository: repository).execute().isEmpty)
+    #expect(try SaveTeammateContactUseCase(repository: repository).loadSavedTeammates().isEmpty)
   }
 
   @Test func aFirstLaunchRequiresThePlayersOwnProfileBeforeManagingTeammates() {
     let repository = TestSquadNotebookRepository()
-    #expect(throws: LoadTeammateDirectoryError.ownProfileRequired) {
-      try LoadTeammateDirectoryUseCase(repository: repository).execute()
+    #expect(throws: SaveTeammateContactError.ownProfileRequired) {
+      try SaveTeammateContactUseCase(repository: repository).loadSavedTeammates()
     }
     #expect(repository.successfulSaveCount == 0)
   }
@@ -35,18 +35,18 @@ struct LoadTeammateDirectoryTests {
   @Test func unreadableSavedTeammatesAreNotReportedAsAnEmptyDirectory() throws {
     let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     repository.failsToLoad = true
-    #expect(throws: LoadTeammateDirectoryError.directoryUnavailable) {
-      try LoadTeammateDirectoryUseCase(repository: repository).execute()
+    #expect(throws: SaveTeammateContactError.notebookUnavailable) {
+      try SaveTeammateContactUseCase(repository: repository).loadSavedTeammates()
     }
   }
 
   @Test func reloadingSeesContactsAddedSinceThePreviousRead() throws {
     let repository = TestSquadNotebookRepository(
       notebook: SquadNotebook(ownProfile: try SquadFixtures.profile()))
-    let loadDirectory = LoadTeammateDirectoryUseCase(repository: repository)
-    #expect(try loadDirectory.execute().isEmpty)
+    let saveContact = SaveTeammateContactUseCase(repository: repository)
+    #expect(try saveContact.loadSavedTeammates().isEmpty)
     let teammate = try SaveTeammateContactUseCase(repository: repository).execute(
       SquadFixtures.draft(name: "Miko"), permissionConfirmed: true)
-    #expect(try loadDirectory.execute().map(\.id) == [teammate.id])
+    #expect(try saveContact.loadSavedTeammates().map(\.id) == [teammate.id])
   }
 }

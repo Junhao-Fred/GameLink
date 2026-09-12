@@ -14,11 +14,11 @@ struct SavedSquadNotebookValidationTests {
     let original = Data(json.utf8)
     try original.write(to: sandbox.fileURL)
     let repository = try LocalSquadNotebookRepository(fileURL: sandbox.fileURL)
-    #expect(throws: SquadNotebookStorageError.savedDetailsInvalid) { try repository.loadNotebook() }
-    #expect(throws: SquadNotebookStorageError.savedDetailsInvalid) {
+    #expect(throws: SquadNotebookAccessError.savedDetailsInvalid) { try repository.loadNotebook() }
+    #expect(throws: SquadNotebookAccessError.savedDetailsInvalid) {
       try repository.saveNotebook(SquadFixtures.notebook())
     }
-    #expect(throws: SaveGamingProfileError.notebookUnavailable) {
+    #expect(throws: SaveGamingProfileError.notebookAccess(.savedDetailsInvalid)) {
       try SaveGamingProfileUseCase(repository: repository).execute(SquadFixtures.draft())
     }
     #expect(try Data(contentsOf: sandbox.fileURL) == original)
@@ -152,7 +152,7 @@ struct SavedSquadNotebookValidationTests {
     try repository.saveNotebook(notebook)
     let damaged = Data("{\"schemaVersion\":".utf8)
     try damaged.write(to: sandbox.fileURL)
-    #expect(throws: SquadNotebookStorageError.savedDetailsInvalid) {
+    #expect(throws: SquadNotebookAccessError.savedDetailsInvalid) {
       try repository.saveNotebook(notebook)
     }
     #expect(try Data(contentsOf: sandbox.fileURL) == damaged)
@@ -167,7 +167,7 @@ struct SavedSquadNotebookValidationTests {
     let original = try Data(contentsOf: sandbox.fileURL)
     var invalid = notebook
     invalid.avoidedPlayerIDs = [PlayerIdentifier()]
-    #expect(throws: SquadNotebookStorageError.savedDetailsInvalid) {
+    #expect(throws: SquadNotebookAccessError.savedDetailsInvalid) {
       try repository.saveNotebook(invalid)
     }
     #expect(try Data(contentsOf: sandbox.fileURL) == original)
@@ -175,7 +175,7 @@ struct SavedSquadNotebookValidationTests {
   }
 
   private func expectSavedDocumentRejected(
-    _ document: [String: Any], reason: SquadNotebookStorageError = .savedDetailsInvalid
+    _ document: [String: Any], reason: SquadNotebookAccessError = .savedDetailsInvalid
   ) throws {
     let sandbox = try SquadStorageSandbox()
     defer { sandbox.remove() }

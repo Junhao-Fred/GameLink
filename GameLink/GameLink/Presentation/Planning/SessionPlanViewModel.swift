@@ -1,23 +1,21 @@
 import Foundation
 import Observation
 
+/// Owns the session draft, matching results and selected teammate across the four tabs.
 @MainActor
 @Observable
 final class SessionPlanViewModel {
+  var selectedTab = GameLinkTab.plan
   var form = SessionPlanForm() {
     didSet {
       guard form != oldValue else { return }
+      // Results and selected details belong to the previous session conditions.
       results = nil
-      path = []
+      selectedTeammate = nil
       if searchFailure?.field?.hasChanged(from: oldValue, to: form) == true {
         searchFailure = nil
         showsSearchFailure = false
       }
-    }
-  }
-  var path: [SessionPlanDestination] = [] {
-    didSet {
-      if !path.contains(.teammateDetails) { selectedTeammate = nil }
     }
   }
   var showsSearchFailure = false
@@ -29,21 +27,20 @@ final class SessionPlanViewModel {
 
   private var hasInitialPlan = false
   private var hasUnsavedProfileChanges = false
-  private let loadProfile: LoadGamingProfileUseCase
   private let findTeammates: FindCompatibleTeammatesUseCase
   private let prepareProposal: PrepareSquadProposalUseCase
 
   init(
-    loadProfile: LoadGamingProfileUseCase, findTeammates: FindCompatibleTeammatesUseCase,
+    findTeammates: FindCompatibleTeammatesUseCase,
     prepareProposal: PrepareSquadProposalUseCase
   ) {
-    self.loadProfile = loadProfile
     self.findTeammates = findTeammates
     self.prepareProposal = prepareProposal
   }
 
   var canSearch: Bool { loadState == .ready && !hasUnsavedProfileChanges }
 
+  /// Rechecks saved context while preventing searches based on unfinished profile edits.
   func refreshProfile(hasUnsavedProfileChanges: Bool) {
     self.hasUnsavedProfileChanges = hasUnsavedProfileChanges
     if hasUnsavedProfileChanges {
@@ -53,30 +50,35 @@ final class SessionPlanViewModel {
       return
     }
     do {
-      let profile = try loadProfile.execute()
+      let profile = try findTeammates.loadOrganiser()
       if profile != savedProfile {
         searchFailure = nil
         showsSearchFailure = false
       }
       savedProfile = profile
-      if let profile {
-        if !hasInitialPlan {
-          form = SessionPlanForm(profile: profile)
-          hasInitialPlan = true
-        }
-        loadState = .ready
-      } else {
-        loadState = .ownProfileRequired
+      if !hasInitialPlan {
+        form = SessionPlanForm(profile: profile)
+        hasInitialPlan = true
       }
-    } catch { loadState = .unavailable(error) }
+      loadState = .ready
+    } catch {
+      if error == .ownProfileRequired {
+        savedProfile = nil
+        loadState = .ownProfileRequired
+      } else {
+        loadState = .unavailable(error)
+      }
+    }
     results?.refresh(hasUnsavedProfileChanges: false)
     selectedTeammate?.refresh(hasUnsavedProfileChanges: false)
   }
 
+  /// Searches the current draft and opens Matches only after a successful validation.
   func search() {
     guard canSearch else { return }
     results = nil
-    path = []
+    selectedTeammate = nil
+    selectedTab = .plan
     let plan: SquadPlan
     do { plan = try form.makePlan() } catch {
       present(.form(error))
@@ -88,7 +90,7 @@ final class SessionPlanViewModel {
       results = TeammateResultsViewModel(search: search, findTeammates: findTeammates)
       searchFailure = nil
       showsSearchFailure = false
-      path = [.results]
+      selectedTab = .matches
     } catch { present(.search(error)) }
   }
 
@@ -97,24 +99,22 @@ final class SessionPlanViewModel {
     showsSearchFailure = true
   }
 
+  /// Opens Details only for a teammate present in the currently available search results.
   func openTeammate(_ teammateID: PlayerIdentifier) {
     guard canSearch, case .available(let search) = results?.state,
       search.matches.contains(where: { $0.id == teammateID })
     else { return }
     selectedTeammate = TeammateDetailsViewModel(
       teammateID: teammateID, search: search, prepareProposal: prepareProposal)
-    path = [.results, .teammateDetails]
+    selectedTab = .details
   }
 
+  /// Clears the selected detail and rechecks matches while retaining the session draft.
   func returnToResults() {
-    path = [.results]
-    results?.refresh(hasUnsavedProfileChanges: hasUnsavedProfileChanges)
+    selectedTeammate = nil
+    selectedTab = .matches
+    refreshProfile(hasUnsavedProfileChanges: hasUnsavedProfileChanges)
   }
-}
-
-nonisolated enum SessionPlanDestination: Hashable {
-  case results
-  case teammateDetails
 }
 
 nonisolated enum SessionPlanLoadState: Equatable {
@@ -122,7 +122,7 @@ nonisolated enum SessionPlanLoadState: Equatable {
   case ready
   case ownProfileRequired
   case unsavedProfileChanges
-  case unavailable(LoadGamingProfileError)
+  case unavailable(FindCompatibleTeammatesError)
 }
 
 nonisolated enum SessionPlanSearchFailure: LocalizedError, Equatable {
@@ -134,7 +134,7 @@ nonisolated enum SessionPlanSearchFailure: LocalizedError, Equatable {
     case .form(let reason): reason.field
     case .search(.outsideOwnAvailability): .playWindow
     case .search(.ownVoiceChatUnavailable): .voiceChat
-    case .search(.ownProfileRequired), .search(.notebookUnavailable): nil
+    case .search(.ownProfileRequired), .search(.notebookUnavailable), .search(.notebookAccess): nil
     }
   }
 

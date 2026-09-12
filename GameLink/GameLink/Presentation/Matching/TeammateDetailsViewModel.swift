@@ -1,10 +1,11 @@
 import Foundation
 import Observation
 
+/// Coordinates teammate validation, proposal preview and user-initiated system sharing.
 @MainActor
 @Observable
 final class TeammateDetailsViewModel {
-  let plan: SquadPlan
+  var plan: SquadPlan { search.plan }
   private(set) var state = TeammateDetailsState.checking
   var proposalPreview: SquadProposal? {
     didSet {
@@ -31,7 +32,6 @@ final class TeammateDetailsViewModel {
     self.teammateID = teammateID
     self.search = search
     self.prepareProposal = prepareProposal
-    plan = search.plan
   }
 
   func refresh(hasUnsavedProfileChanges: Bool) {
@@ -41,12 +41,14 @@ final class TeammateDetailsViewModel {
 
   func refresh() { _ = checkedProposal() }
 
+  /// Reveals the inline preview only after rechecking the teammate and shared time.
   func reviewProposal() {
     guard let proposal = checkedProposal() else { return }
     shareOutcome = nil
     proposalPreview = proposal
   }
 
+  /// Rechecks the notebook immediately before handing proposal text to system sharing.
   func requestSharing() {
     guard proposalPreview != nil, shareRequest == nil else { return }
     guard let proposal = checkedProposal() else { return }
@@ -56,6 +58,7 @@ final class TeammateDetailsViewModel {
     shareRequest = request
   }
 
+  /// Records only the active request's outcome, ignoring callbacks from older share attempts.
   func completeSharing(requestID: UUID, outcome: SquadProposalShareOutcome) {
     guard activeShareID == requestID else { return }
     shareOutcome = outcome
@@ -97,7 +100,7 @@ nonisolated enum TeammateProposalFailure: LocalizedError, Equatable {
   var errorDescription: String? {
     switch self {
     case .unsavedProfileChanges:
-      "Save or discard your edits in Profile, then return to Find before reviewing a proposal."
+      "Save your edits in Profile, then find teammates again in Plan before reviewing a proposal."
     case .preparation(let failure): failure.errorDescription
     }
   }

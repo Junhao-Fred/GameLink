@@ -83,4 +83,13 @@ nonisolated enum SquadFixtures {
   static func notebook() throws -> SquadNotebook {
     SquadNotebook(ownProfile: try profile(), contacts: [try contact()])
   }
+
+  @MainActor
+  static func saveLegacyExclusions(
+    _ teammateIDs: Set<PlayerIdentifier>, in repository: any SquadNotebookRepository
+  ) throws {
+    var notebook = try repository.loadNotebook()
+    notebook.avoidedPlayerIDs = teammateIDs
+    try repository.saveNotebook(notebook)
+  }
 }

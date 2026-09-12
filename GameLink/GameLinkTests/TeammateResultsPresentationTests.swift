@@ -5,21 +5,19 @@ import Testing
 @Suite("Keeping teammate results aligned with saved session conditions")
 @MainActor
 struct TeammateResultsPresentationTests {
-  @Test func avoidingAndRestoringATeammateUpdatesOpenResults() throws {
+  @Test func restoredLegacyExclusionsUpdateOpenResults() throws {
     let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let finder = FindCompatibleTeammatesUseCase(repository: repository)
     let original = try finder.execute(SquadFixtures.plan())
     let results = TeammateResultsViewModel(search: original, findTeammates: finder)
     let teammate = try #require(original.matches.first)
-    try SetTeammateAvoidanceUseCase(repository: repository).execute(
-      teammateID: teammate.id, isAvoided: true)
-    results.refresh()
+    try SquadFixtures.saveLegacyExclusions([teammate.id], in: repository)
+    results.refresh(hasUnsavedProfileChanges: false)
     #expect(
       results.state
         == .available(SquadSearch(organiser: original.organiser, plan: original.plan, matches: [])))
-    try SetTeammateAvoidanceUseCase(repository: repository).execute(
-      teammateID: teammate.id, isAvoided: false)
-    results.refresh()
+    try SquadFixtures.saveLegacyExclusions([], in: repository)
+    results.refresh(hasUnsavedProfileChanges: false)
     #expect(results.state == .available(original))
   }
 
@@ -29,11 +27,11 @@ struct TeammateResultsPresentationTests {
     let original = try finder.execute(SquadFixtures.plan())
     let results = TeammateResultsViewModel(search: original, findTeammates: finder)
     repository.failsToLoad = true
-    results.refresh()
+    results.refresh(hasUnsavedProfileChanges: false)
     #expect(results.state == .unavailable(.notebookUnavailable))
     repository.failsToLoad = false
     repository.notebook.contacts = []
-    results.refresh()
+    results.refresh(hasUnsavedProfileChanges: false)
     #expect(
       results.state
         == .available(SquadSearch(organiser: original.organiser, plan: original.plan, matches: [])))
@@ -42,7 +40,6 @@ struct TeammateResultsPresentationTests {
   @Test func unsavedProfileEditsHideResultsUntilThePlanningContextIsReviewed() throws {
     let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let planner = SessionPlanViewModel(
-      loadProfile: LoadGamingProfileUseCase(repository: repository),
       findTeammates: FindCompatibleTeammatesUseCase(repository: repository),
       prepareProposal: PrepareSquadProposalUseCase(repository: repository))
     planner.refreshProfile(hasUnsavedProfileChanges: false)
@@ -52,7 +49,7 @@ struct TeammateResultsPresentationTests {
     let original = results.state
     planner.refreshProfile(hasUnsavedProfileChanges: true)
     #expect(results.state == .unsavedProfileChanges)
-    results.refresh()
+    planner.returnToResults()
     #expect(results.state == .unsavedProfileChanges)
     planner.refreshProfile(hasUnsavedProfileChanges: false)
     #expect(results.state == original)
@@ -65,10 +62,10 @@ struct TeammateResultsPresentationTests {
     let results = TeammateResultsViewModel(
       search: try finder.execute(SquadFixtures.plan()), findTeammates: finder)
     repository.notebook.ownProfile = try SquadFixtures.profile(duration: 60)
-    results.refresh()
+    results.refresh(hasUnsavedProfileChanges: false)
     #expect(results.state == .unavailable(.outsideOwnAvailability))
     repository.notebook.ownProfile = nil
-    results.refresh()
+    results.refresh(hasUnsavedProfileChanges: false)
     #expect(results.state == .unavailable(.ownProfileRequired))
   }
 
@@ -95,7 +92,7 @@ struct TeammateResultsPresentationTests {
     #expect(repository.successfulSaveCount == 0)
   }
 
-  @Test func reopenedStorageSuppliesSearchResultsAndSubsequentAvoidanceChanges() throws {
+  @Test func reopenedStorageSuppliesSearchResultsAndLegacyExclusions() throws {
     let sandbox = try SquadStorageSandbox()
     defer { sandbox.remove() }
     let writer = try LocalSquadNotebookRepository(fileURL: sandbox.fileURL)
@@ -103,7 +100,6 @@ struct TeammateResultsPresentationTests {
     try writer.saveNotebook(original)
     let reader = try LocalSquadNotebookRepository(fileURL: sandbox.fileURL)
     let planner = SessionPlanViewModel(
-      loadProfile: LoadGamingProfileUseCase(repository: reader),
       findTeammates: FindCompatibleTeammatesUseCase(repository: reader),
       prepareProposal: PrepareSquadProposalUseCase(repository: reader))
     planner.refreshProfile(hasUnsavedProfileChanges: false)
@@ -112,8 +108,7 @@ struct TeammateResultsPresentationTests {
     let results = try #require(planner.results)
     let organiser = try #require(original.ownProfile)
     let teammate = try #require(original.contacts.first)
-    try SetTeammateAvoidanceUseCase(repository: writer).execute(
-      teammateID: teammate.id, isAvoided: true)
+    try SquadFixtures.saveLegacyExclusions([teammate.id], in: writer)
     planner.refreshProfile(hasUnsavedProfileChanges: false)
     #expect(
       results.state

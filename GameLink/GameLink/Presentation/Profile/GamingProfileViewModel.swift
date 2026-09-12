@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+/// Owns the organiser's editable profile and presents save outcomes without discarding drafts.
 @MainActor
 @Observable
 final class GamingProfileViewModel {
@@ -16,11 +17,9 @@ final class GamingProfileViewModel {
   private(set) var saveFailure: GamingProfileSaveFailure?
   private(set) var showsSaveConfirmation = false
 
-  private let loadProfile: LoadGamingProfileUseCase
   private let saveProfile: SaveGamingProfileUseCase
 
-  init(loadProfile: LoadGamingProfileUseCase, saveProfile: SaveGamingProfileUseCase) {
-    self.loadProfile = loadProfile
+  init(saveProfile: SaveGamingProfileUseCase) {
     self.saveProfile = saveProfile
   }
 
@@ -30,14 +29,16 @@ final class GamingProfileViewModel {
     loadState == .ready && (savedProfile == nil || hasUnsavedChanges)
   }
 
+  /// Whether teammate operations can use a saved profile that matches the visible draft.
   var canManageTeammates: Bool {
     loadState == .ready && savedProfile != nil && !hasUnsavedChanges
   }
 
+  /// Loads once after success so revisiting Profile does not overwrite unsaved edits.
   func loadIfNeeded() {
     guard loadState != .ready else { return }
     do {
-      savedProfile = try loadProfile.execute()
+      savedProfile = try saveProfile.loadSavedProfile()
       form = GamingProfileForm(profile: savedProfile)
       saveFailure = nil
       showsSaveFailure = false
@@ -45,6 +46,7 @@ final class GamingProfileViewModel {
     } catch { loadState = .unavailable(error) }
   }
 
+  /// Validates the form and updates saved state only after the business operation succeeds.
   func save() {
     guard canSave else { return }
     let draft: GamingProfileDraft
@@ -79,7 +81,7 @@ final class GamingProfileViewModel {
 nonisolated enum GamingProfileLoadState: Equatable {
   case awaitingLoad
   case ready
-  case unavailable(LoadGamingProfileError)
+  case unavailable(SaveGamingProfileError)
 }
 
 nonisolated enum GamingProfileSaveFailure: LocalizedError, Equatable {
@@ -90,7 +92,7 @@ nonisolated enum GamingProfileSaveFailure: LocalizedError, Equatable {
     switch self {
     case .form(let reason): reason.field
     case .profile(.invalidProfile), .profile(.nameUsedByTeammate): .playerName
-    case .profile(.notebookUnavailable), .profile(.profileNotSaved): nil
+    case .profile(.notebookUnavailable), .profile(.profileNotSaved), .profile(.notebookAccess): nil
     }
   }
 
@@ -99,9 +101,5 @@ nonisolated enum GamingProfileSaveFailure: LocalizedError, Equatable {
     case .form(let reason): reason.errorDescription
     case .profile(let reason): reason.errorDescription
     }
-  }
-
-  func message(for field: GamingProfileField) -> String? {
-    self.field == field ? errorDescription : nil
   }
 }

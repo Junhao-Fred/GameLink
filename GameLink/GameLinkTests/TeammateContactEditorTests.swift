@@ -26,7 +26,7 @@ struct TeammateContactEditorTests {
     #expect(repository.successfulSaveCount == 1)
   }
 
-  @Test func savingATeammateTrimsTheirNameAndCannotSubmitTheSameSheetTwice() throws {
+  @Test func savingATeammateTrimsTheirNameAndCannotSubmitTheSameDraftTwice() throws {
     let repository = TestSquadNotebookRepository(notebook: try SquadFixtures.notebook())
     let editor = TeammateContactEditorViewModel(
       saveContact: SaveTeammateContactUseCase(repository: repository))
@@ -144,12 +144,13 @@ struct TeammateContactEditorTests {
     #expect(editor.savedContact?.profile.availability.endMinute == 1440)
   }
 
-  @Test func aContactRemovedWhileEditingIsNotRecreatedFromTheOldSheet() throws {
+  @Test func aContactRemovedWhileEditingIsNotRecreatedFromTheOldDraft() throws {
     let notebook = try SquadFixtures.notebook()
     let repository = TestSquadNotebookRepository(notebook: notebook)
+    let contact = try #require(notebook.contacts.first)
     let editor = TeammateContactEditorViewModel(
       saveContact: SaveTeammateContactUseCase(repository: repository),
-      contact: try #require(notebook.contacts.first))
+      contact: contact)
     editor.form.gamerTag = "Miko Updated"
     editor.permissionConfirmed = true
     repository.notebook.contacts = []

@@ -1,11 +1,12 @@
 import SwiftUI
 
+/// Connects the app's screens to Use Cases sharing the same local notebook repository.
 @main
 struct GameLinkApp: App {
   @State private var profileViewModel: GamingProfileViewModel?
   @State private var teammateDirectory: TeammateDirectoryViewModel?
   @State private var sessionPlan: SessionPlanViewModel?
-  @State private var storageSetupFailure: SquadNotebookStorageError?
+  @State private var storageSetupFailure: SquadNotebookAccessError?
 
   var body: some Scene {
     WindowGroup {
@@ -30,18 +31,15 @@ struct GameLinkApp: App {
     }
   }
 
+  /// Builds the workspace dependencies or presents a retryable storage-setup failure.
   private func openNotebook() {
     do {
       let repository = try LocalSquadNotebookRepository.applicationSupport()
       profileViewModel = GamingProfileViewModel(
-        loadProfile: LoadGamingProfileUseCase(repository: repository),
         saveProfile: SaveGamingProfileUseCase(repository: repository))
       teammateDirectory = TeammateDirectoryViewModel(
-        loadDirectory: LoadTeammateDirectoryUseCase(repository: repository),
-        saveContact: SaveTeammateContactUseCase(repository: repository),
-        setAvoidance: SetTeammateAvoidanceUseCase(repository: repository))
+        saveContact: SaveTeammateContactUseCase(repository: repository))
       sessionPlan = SessionPlanViewModel(
-        loadProfile: LoadGamingProfileUseCase(repository: repository),
         findTeammates: FindCompatibleTeammatesUseCase(repository: repository),
         prepareProposal: PrepareSquadProposalUseCase(repository: repository))
       storageSetupFailure = nil

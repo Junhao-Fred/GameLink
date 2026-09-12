@@ -53,8 +53,7 @@ struct PrepareSquadProposalTests {
     let search = try FindCompatibleTeammatesUseCase(repository: repository)
       .execute(SquadFixtures.plan())
     let match = try #require(search.matches.first)
-    try SetTeammateAvoidanceUseCase(repository: repository).execute(
-      teammateID: match.id, isAvoided: true)
+    try SquadFixtures.saveLegacyExclusions([match.id], in: repository)
     #expect(throws: PrepareSquadProposalError.teammateAvoided) {
       try PrepareSquadProposalUseCase(repository: repository).execute(
         teammateID: match.id, from: search)

@@ -1,5 +1,6 @@
 import Foundation
 
+/// A stable local identity that survives edits to a player's name or preferences.
 nonisolated struct PlayerIdentifier: Hashable, Sendable {
   let rawValue: UUID
 
@@ -8,12 +9,14 @@ nonisolated struct PlayerIdentifier: Hashable, Sendable {
   }
 }
 
+/// A supported game region; compatible teammates must use the same server.
 nonisolated enum GameServer: String, CaseIterable, Sendable {
   case oceania = "Oceania"
   case europeWest = "Europe West"
   case northAmerica = "North America"
 }
 
+/// The League of Legends position a player offers or a session needs.
 nonisolated enum PreferredRole: String, CaseIterable, Sendable {
   case top = "Top"
   case jungle = "Jungle"
@@ -22,6 +25,8 @@ nonisolated enum PreferredRole: String, CaseIterable, Sendable {
   case support = "Support"
 }
 
+/// Editable player details that must be validated before they become a profile.
+/// Saving trims the name and requires 1...40 characters without control characters.
 nonisolated struct GamingProfileDraft: Equatable, Sendable {
   var gamerTag: String
   var server: GameServer
@@ -30,6 +35,8 @@ nonisolated struct GamingProfileDraft: Equatable, Sendable {
   var usesVoiceChat: Bool
 }
 
+/// A player's self-reported game preferences and recurring availability.
+/// Names contain 1...40 characters without control characters; identity is not verified.
 nonisolated struct GamingProfile: Identifiable, Equatable, Sendable {
   let id: PlayerIdentifier
   let gamerTag: String
@@ -38,6 +45,7 @@ nonisolated struct GamingProfile: Identifiable, Equatable, Sendable {
   let availability: WeeklyPlayWindow
   let usesVoiceChat: Bool
 
+  /// Trims and validates the player name while retaining the supplied local identity.
   init(id: PlayerIdentifier, draft: GamingProfileDraft) throws(GamingProfileValidationError) {
     let name = draft.gamerTag.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !name.isEmpty else { throw .missingPlayerName }
@@ -53,6 +61,7 @@ nonisolated struct GamingProfile: Identifiable, Equatable, Sendable {
     usesVoiceChat = draft.usesVoiceChat
   }
 
+  /// Detects a likely local duplicate using the server and case-insensitive player name.
   func hasSameLocalIdentity(as other: GamingProfile) -> Bool {
     server == other.server
       && gamerTag.folding(options: .caseInsensitive, locale: Locale(identifier: "en_US_POSIX"))
@@ -61,6 +70,7 @@ nonisolated struct GamingProfile: Identifiable, Equatable, Sendable {
   }
 }
 
+/// Player-name problems with guidance for correcting the profile.
 nonisolated enum GamingProfileValidationError: LocalizedError, Equatable, Sendable {
   case missingPlayerName
   case playerNameTooLong
