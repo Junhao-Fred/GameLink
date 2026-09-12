@@ -23,6 +23,7 @@ struct TeammateDetailsView: View {
                 .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)
+            .foregroundStyle(Color(.accentForeground))
             .accessibilityIdentifier("reviewSquadProposal")
           } footer: {
             Text(

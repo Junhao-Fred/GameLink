@@ -40,6 +40,7 @@ struct TeammateContactEditorSection: View {
             .frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(.borderedProminent)
+        .foregroundStyle(Color(.accentForeground))
         .disabled(viewModel.savedContact != nil)
         .accessibilityIdentifier("saveTeammate")
         .alert("Teammate not saved", isPresented: $viewModel.showsSaveFailure) {

@@ -92,6 +92,7 @@ private struct SquadDestinationGuidanceView: View {
       } actions: {
         Button(actionTitle, action: action)
           .buttonStyle(.borderedProminent)
+          .foregroundStyle(Color(.accentForeground))
           .frame(minHeight: 44)
       }
     }

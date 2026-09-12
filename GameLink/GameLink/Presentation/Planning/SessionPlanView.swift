@@ -92,6 +92,7 @@ private struct SessionPlanFields: View {
           Text("Find teammates").frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(.borderedProminent)
+        .foregroundStyle(Color(.accentForeground))
         .disabled(!viewModel.canSearch)
         .accessibilityIdentifier("findTeammates")
         if let failure = viewModel.searchFailure, failure.field == nil {
@@ -121,6 +122,7 @@ private struct SessionPlanRecoveryView: View {
       } actions: {
         Button(actionTitle, action: action)
           .buttonStyle(.borderedProminent)
+          .foregroundStyle(Color(.accentForeground))
           .frame(minHeight: 44)
       }
     }

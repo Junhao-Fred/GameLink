@@ -24,6 +24,7 @@ struct SquadProposalPreviewSection: View {
             .frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(.borderedProminent)
+        .foregroundStyle(Color(.accentForeground))
         .disabled(viewModel.shareRequest != nil)
         .accessibilityIdentifier("shareSquadProposal")
         if let outcome = viewModel.shareOutcome {

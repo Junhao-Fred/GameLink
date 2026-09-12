@@ -98,6 +98,7 @@ struct GamingProfileUnavailableView: View {
     } actions: {
       Button("Try again", action: retry)
         .buttonStyle(.borderedProminent)
+        .foregroundStyle(Color(.accentForeground))
     }
   }
 }
