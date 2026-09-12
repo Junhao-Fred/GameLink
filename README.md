@@ -9,7 +9,6 @@ An iOS app for League of Legends players to arrange sessions with their existing
 - **Details:** review a proposal and share it through the iOS share sheet.
 - **Profile:** save your profile and add or edit teammates with their permission.
 
-Availability uses Australia/Sydney time. Players confirm the final arrangements in their existing chat; sharing a proposal does not confirm a booking.
 
 ## Run
 
@@ -31,5 +30,3 @@ Requires Xcode 26.6 and an iPhone or simulator running iOS 26.5 or later.
 ## Tests
 
 Choose **Product > Test** in Xcode. Tests use isolated storage. File protection requires a physical device and is skipped in the simulator.
-
-The architecture diagram, reflective report and submission ZIP are maintained separately from this repository.
